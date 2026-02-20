@@ -13,7 +13,7 @@
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Core Engine & SOM Foundation' (Protocol in workflow.md)** a5b3c0d
 
 ## Phase 2: Adapter Architecture & Tool Integration
-- [ ] **Task: Define Pluggable Adapter Interface**
+- [x] **Task: Define Pluggable Adapter Interface** 5378b76
     - [ ] Write failing tests for the base adapter abstract class
     - [ ] Implement the tool adapter interface and registration system
 - [ ] **Task: Implement Nmap Adapter**
