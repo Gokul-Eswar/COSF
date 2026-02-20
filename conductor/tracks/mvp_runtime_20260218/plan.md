@@ -4,7 +4,7 @@
 - [x] **Task: Define Core Security Object Model (SOM)** fccd7d4
     - [ ] Write failing tests for Asset, Service, and Vulnerability Pydantic models
     - [ ] Implement SOM entities using Pydantic
-- [ ] **Task: Build Asynchronous Workflow Parser**
+- [x] **Task: Build Asynchronous Workflow Parser** 5befec9
     - [ ] Write failing tests for YAML workflow schema validation
     - [ ] Implement the workflow parser using Pydantic and PyYAML
 - [ ] **Task: Implement Base Execution Engine**
