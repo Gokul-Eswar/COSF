@@ -1,0 +1,34 @@
+[project]
+name = "cosf"
+version = "0.1.0"
+description = "Cyber Operations Standardization Framework (COSF)"
+authors = [{ name = "GOKUL" }]
+dependencies = [
+    "pydantic[email]>=2.6.1",
+    "pyyaml>=6.0.1",
+    "typer>=0.9.0",
+    "fastapi>=0.109.2",
+    "asyncio>=3.4.3",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "hypothesis>=6.98.4",
+]
+
+[tool.setuptools.packages.find]
+include = ["cosf*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
