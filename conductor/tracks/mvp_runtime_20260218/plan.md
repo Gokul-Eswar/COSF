@@ -1,7 +1,7 @@
 # Track: MVP: Core Runtime & Initial Adapters Implementation Plan
 
 ## Phase 1: Core Engine & SOM Foundation
-- [ ] **Task: Define Core Security Object Model (SOM)**
+- [x] **Task: Define Core Security Object Model (SOM)** fccd7d4
     - [ ] Write failing tests for Asset, Service, and Vulnerability Pydantic models
     - [ ] Implement SOM entities using Pydantic
 - [ ] **Task: Build Asynchronous Workflow Parser**
