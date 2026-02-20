@@ -16,7 +16,7 @@
 - [x] **Task: Define Pluggable Adapter Interface** 5378b76
     - [ ] Write failing tests for the base adapter abstract class
     - [ ] Implement the tool adapter interface and registration system
-- [ ] **Task: Implement Nmap Adapter**
+- [x] **Task: Implement Nmap Adapter** 5d1ca70
     - [ ] Write failing tests for Nmap output parsing to SOM
     - [ ] Implement the Nmap adapter with Docker-based execution
 - [ ] **Task: Implement Nuclei Adapter**
