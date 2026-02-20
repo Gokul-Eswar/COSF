@@ -22,7 +22,7 @@
 - [x] **Task: Implement Nuclei Adapter** afb22a4
     - [ ] Write failing tests for Nuclei output parsing to SOM
     - [ ] Implement the Nuclei adapter with Docker-based execution
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2: Adapter Architecture & Tool Integration' (Protocol in workflow.md)**
+- [~] **Task: Conductor - User Manual Verification 'Phase 2: Adapter Architecture & Tool Integration' (Protocol in workflow.md)**
 
 ## Phase 3: CLI & Initial Workflow Execution
 - [ ] **Task: Build Basic CLI**
