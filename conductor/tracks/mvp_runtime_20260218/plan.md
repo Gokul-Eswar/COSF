@@ -1,6 +1,6 @@
 # Track: MVP: Core Runtime & Initial Adapters Implementation Plan
 
-## Phase 1: Core Engine & SOM Foundation
+## Phase 1: Core Engine & SOM Foundation [checkpoint: a5b3c0d]
 - [x] **Task: Define Core Security Object Model (SOM)** fccd7d4
     - [ ] Write failing tests for Asset, Service, and Vulnerability Pydantic models
     - [ ] Implement SOM entities using Pydantic
@@ -10,7 +10,7 @@
 - [x] **Task: Implement Base Execution Engine** f64f18d
     - [ ] Write failing tests for task orchestration and state management
     - [ ] Build the core `asyncio` execution loop for task sequencing
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1: Core Engine & SOM Foundation' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 1: Core Engine & SOM Foundation' (Protocol in workflow.md)** a5b3c0d
 
 ## Phase 2: Adapter Architecture & Tool Integration
 - [ ] **Task: Define Pluggable Adapter Interface**
