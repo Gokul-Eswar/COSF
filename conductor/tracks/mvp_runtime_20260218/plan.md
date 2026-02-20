@@ -19,7 +19,7 @@
 - [x] **Task: Implement Nmap Adapter** 5d1ca70
     - [ ] Write failing tests for Nmap output parsing to SOM
     - [ ] Implement the Nmap adapter with Docker-based execution
-- [ ] **Task: Implement Nuclei Adapter**
+- [x] **Task: Implement Nuclei Adapter** afb22a4
     - [ ] Write failing tests for Nuclei output parsing to SOM
     - [ ] Implement the Nuclei adapter with Docker-based execution
 - [ ] **Task: Conductor - User Manual Verification 'Phase 2: Adapter Architecture & Tool Integration' (Protocol in workflow.md)**
