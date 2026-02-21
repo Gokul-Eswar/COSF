@@ -25,7 +25,7 @@
 - [x] **Task: Conductor - User Manual Verification 'Phase 2: Adapter Architecture & Tool Integration' (Protocol in workflow.md)** 10aef18
 
 ## Phase 3: CLI & Initial Workflow Execution
-- [ ] **Task: Build Basic CLI**
+- [x] **Task: Build Basic CLI** e9769e0
     - [ ] Write failing tests for the `cosf run` command
     - [ ] Implement the CLI using Typer
 - [ ] **Task: End-to-End Workflow Execution**
