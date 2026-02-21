@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: MVP: Core Runtime & Initial Adapters**
+- [x] **Track: MVP: Core Runtime & Initial Adapters**
   *Link: [./tracks/mvp_runtime_20260218/](./tracks/mvp_runtime_20260218/)*
