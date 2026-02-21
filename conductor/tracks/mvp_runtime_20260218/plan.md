@@ -32,3 +32,6 @@
     - [ ] Create an E2E test for a combined Nmap + Nuclei workflow
     - [ ] Verify execution, normalization, and result aggregation
 - [x] **Task: Conductor - User Manual Verification 'Phase 3: CLI & Initial Workflow Execution' (Protocol in workflow.md)** 0bd24a2
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 3a23631
