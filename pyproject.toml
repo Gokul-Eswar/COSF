@@ -22,6 +22,9 @@ test = [
 [tool.setuptools.packages.find]
 include = ["cosf*"]
 
+[project.scripts]
+cosf = "cosf.cli:app"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
