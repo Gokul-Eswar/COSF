@@ -24,11 +24,11 @@
     - [ ] Implement the Nuclei adapter with Docker-based execution
 - [x] **Task: Conductor - User Manual Verification 'Phase 2: Adapter Architecture & Tool Integration' (Protocol in workflow.md)** 10aef18
 
-## Phase 3: CLI & Initial Workflow Execution
+## Phase 3: CLI & Initial Workflow Execution [checkpoint: 0bd24a2]
 - [x] **Task: Build Basic CLI** e9769e0
     - [ ] Write failing tests for the `cosf run` command
     - [ ] Implement the CLI using Typer
 - [x] **Task: End-to-End Workflow Execution** fda7ec0
     - [ ] Create an E2E test for a combined Nmap + Nuclei workflow
     - [ ] Verify execution, normalization, and result aggregation
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3: CLI & Initial Workflow Execution' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 3: CLI & Initial Workflow Execution' (Protocol in workflow.md)** 0bd24a2
