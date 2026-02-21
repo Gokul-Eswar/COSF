@@ -1,0 +1,10 @@
+name: "Network Vulnerability Assessment"
+tasks:
+  - name: "Internal Network Scan"
+    adapter: "nmap"
+    params:
+      target: "scanme.nmap.org"
+  - name: "Web Application Scan"
+    adapter: "nuclei"
+    params:
+      target: "https://scanme.nmap.org"
