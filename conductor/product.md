@@ -15,6 +15,6 @@ The Cyber Operations Standardization Framework (COSF) is designed to be a univer
 
 ## Key Features
 - **Security Task Definition Language:** A simple DSL/YAML for defining security workflows.
-- **Tool Adapter Layer:** Pluggable integration with scanners, packet analyzers, and exploit frameworks.
+- **Tool Adapter Layer:** Pluggable integration with scanners (e.g., Nmap, Nuclei), packet analyzers, and exploit frameworks.
 - **Security Data Normalization Engine:** Automatic conversion of logs and scan results into structured objects (Asset, Vulnerability, Risk, etc.).
 - **Deterministic Execution Engine:** Handles parallel execution, retries, and evidence collection.

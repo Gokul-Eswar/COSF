@@ -1,7 +1,7 @@
 # Tech Stack
 
 ## Core Runtime & Backend
-- **Language:** Python 3.12+ (Utilizing `asyncio` for high-concurrency execution and `Pydantic` for strict schema enforcement).
+- **Language:** Python 3.12+ (Utilizing `asyncio` for high-concurrency execution, `Pydantic` for strict schema enforcement, and `PyYAML` for workflow parsing).
 - **API & CLI:** FastAPI for the control plane and Typer for a modern, text-based command interface.
 - **Orchestration:** Temporal (Enterprise-grade) or Prefect (Lightweight) for building durable and fault-tolerant workflows.
 
@@ -11,7 +11,7 @@
 - **Attack Graph:** Neo4j for modeling attack paths, lateral movement, and asset relationships.
 
 ## Infrastructure & Messaging
-- **Isolation:** Docker/Kubernetes for sandboxed tool execution and scaling.
+- **Isolation:** Docker (via `docker-py` for the SDK) / Kubernetes for sandboxed tool execution and scaling.
 - **Event Bus:** NATS for lightweight and high-performance message streaming between framework components.
 
 ## Development Standards
