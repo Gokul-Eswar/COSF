@@ -12,7 +12,7 @@
     - [ ] Build the core `asyncio` execution loop for task sequencing
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Core Engine & SOM Foundation' (Protocol in workflow.md)** a5b3c0d
 
-## Phase 2: Adapter Architecture & Tool Integration
+## Phase 2: Adapter Architecture & Tool Integration [checkpoint: 10aef18]
 - [x] **Task: Define Pluggable Adapter Interface** 5378b76
     - [ ] Write failing tests for the base adapter abstract class
     - [ ] Implement the tool adapter interface and registration system
@@ -22,7 +22,7 @@
 - [x] **Task: Implement Nuclei Adapter** afb22a4
     - [ ] Write failing tests for Nuclei output parsing to SOM
     - [ ] Implement the Nuclei adapter with Docker-based execution
-- [~] **Task: Conductor - User Manual Verification 'Phase 2: Adapter Architecture & Tool Integration' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 2: Adapter Architecture & Tool Integration' (Protocol in workflow.md)** 10aef18
 
 ## Phase 3: CLI & Initial Workflow Execution
 - [ ] **Task: Build Basic CLI**
