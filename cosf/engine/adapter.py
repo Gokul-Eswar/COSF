@@ -1,11 +1,52 @@
+import logging
+import docker
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List, Union
+from pydantic import BaseModel
+
+class TaskResult(BaseModel):
+    """Encapsulates the result of a task execution."""
+    entities: List[Any] = []
+    raw_output: Optional[str] = None
+    error: Optional[str] = None
 
 class BaseAdapter(ABC):
+    """Base class for all security tool adapters.
+    
+    Provides common utilities for logging, error handling, and Docker management.
+    """
+    
+    def __init__(self):
+        self.logger = logging.getLogger(f"cosf.adapter.{self.__class__.__name__}")
+        self._docker_client: Optional[docker.DockerClient] = None
+
+    @property
+    def docker_client(self) -> docker.DockerClient:
+        """Lazily initializes and returns a Docker client."""
+        if self._docker_client is None:
+            try:
+                self._docker_client = docker.from_env()
+            except Exception as e:
+                self.logger.error(f"Failed to initialize Docker client: {e}")
+                raise RuntimeError("Docker is not available or accessible")
+        return self._docker_client
+
     @abstractmethod
-    async def run(self, params: Dict[str, Any]) -> Any:
+    async def run(self, params: Dict[str, Any]) -> Union[TaskResult, List[Any], Dict[str, Any]]:
         """Execute the adapter's task with provided parameters."""
-        return params
+        pass
+
+    def run_container(self, image: str, command: str, **kwargs) -> str:
+        """Helper to run a command in a Docker container and return output."""
+        self.logger.info(f"Running container {image} with command: {command}")
+        try:
+            container_output = self.docker_client.containers.run(
+                image, command, remove=True, **kwargs
+            )
+            return container_output.decode("utf-8")
+        except Exception as e:
+            self.logger.error(f"Container execution failed: {e}")
+            raise RuntimeError(f"Failed to execute tool {image}: {e}")
 
 class AdapterRegistry:
     """A registry for managing and retrieving tool adapters.
@@ -42,3 +83,7 @@ class AdapterRegistry:
         if name not in self._adapters:
             raise KeyError(f"Adapter '{name}' not found in registry")
         return self._adapters[name]
+
+    def list_adapters(self) -> Dict[str, BaseAdapter]:
+        """Returns all registered adapters."""
+        return self._adapters

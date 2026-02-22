@@ -29,6 +29,7 @@ class TaskExecution(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     result_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    raw_output: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     error: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     execution: Mapped["WorkflowExecution"] = relationship(back_populates="tasks")

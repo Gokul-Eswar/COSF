@@ -1,9 +1,9 @@
 from typing import Dict, Any, List
-from cosf.engine.adapter import BaseAdapter
+from cosf.engine.adapter import BaseAdapter, TaskResult
 from cosf.models.som import Asset, Service, Vulnerability
 
 class MockAdapter(BaseAdapter):
-    async def run(self, params: Dict[str, Any]) -> List[Any]:
+    async def run(self, params: Dict[str, Any]) -> TaskResult:
         target = params.get("target", "127.0.0.1")
         
         asset = Asset(name=f"mock-{target}", ip_address=target)
@@ -15,4 +15,7 @@ class MockAdapter(BaseAdapter):
             service_id=service.id
         )
         
-        return [asset, service, vuln]
+        return TaskResult(
+            entities=[asset, service, vuln],
+            raw_output=f"DEBUG: Mock scan results for {target}\nFOUND: Port 80 OPEN\nRESULT: 1 vulnerability detected."
+        )

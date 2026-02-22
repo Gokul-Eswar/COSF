@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 from typing import List, Any, Dict, Optional
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
-from cosf.engine.adapter import AdapterRegistry
+from cosf.engine.adapter import AdapterRegistry, TaskResult
 from cosf.models.database import WorkflowExecution, TaskExecution, DBAsset, DBService, DBVulnerability
 from cosf.models.db_session import AsyncSessionLocal, init_db
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,14 +84,20 @@ class ExecutionEngine:
             db_task.status = "completed"
             db_task.end_time = datetime.utcnow()
             
-            # If result is a SOM object or list of SOM objects, persist them
-            if isinstance(result, list):
-                db_task.result_json = [self._som_to_dict(r) for r in result]
-                for item in result:
-                    await self._persist_som_object(item, session)
+            entities = []
+            if isinstance(result, TaskResult):
+                entities = result.entities
+                db_task.raw_output = result.raw_output
+                if result.error:
+                    db_task.error = result.error
+            elif isinstance(result, list):
+                entities = result
             else:
-                db_task.result_json = self._som_to_dict(result)
-                await self._persist_som_object(result, session)
+                entities = [result]
+
+            db_task.result_json = [self._som_to_dict(e) for e in entities]
+            for item in entities:
+                await self._persist_som_object(item, session)
                 
             await session.commit()
             return result
