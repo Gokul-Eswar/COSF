@@ -1,0 +1,10 @@
+name: "Mock Assessment"
+tasks:
+  - name: "Mock Step 1"
+    adapter: "mock"
+    params:
+      target: "10.0.0.1"
+  - name: "Mock Step 2"
+    adapter: "mock"
+    params:
+      target: "10.0.0.2"
