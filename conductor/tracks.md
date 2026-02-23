@@ -13,7 +13,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [x] Track: Reporting & Visualization Layer
 - [Folder](./tracks/reporting/)
-
----
-## [x] Track: Advanced Workflow Logic (WDL 2.0)
-- [Folder](./tracks/advanced_workflow/)
