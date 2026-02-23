@@ -14,7 +14,7 @@ The Cyber Operations Standardization Framework (COSF) is designed to be a univer
 - **Data Normalization:** Transform heterogeneous outputs from various tools into a single, unified Security Object Model (SOM), facilitating automated analysis and reporting.
 
 ## Key Features
-- **Security Task Definition Language:** A simple DSL/YAML for defining security workflows.
+- **Workflow Definition Language (WDL 2.0):** A robust YAML-based DSL supporting task dependencies, variable passing, retries, and timeouts.
 - **Tool Adapter Layer:** Pluggable integration with scanners (e.g., Nmap, Nuclei), packet analyzers, and exploit frameworks.
 - **Security Data Normalization Engine:** Automatic conversion of logs and scan results into structured objects (Asset, Vulnerability, Risk, etc.).
-- **Deterministic Execution Engine:** Handles parallel execution, retries, and evidence collection.
+- **Deterministic Execution Engine:** Orchestrates complex security tasks with dependency-aware execution and stateful variable passing.
