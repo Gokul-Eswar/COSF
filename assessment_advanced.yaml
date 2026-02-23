@@ -1,0 +1,19 @@
+name: Advanced Security Assessment
+tasks:
+  - id: discovery
+    name: Network Discovery
+    adapter: nmap
+    params:
+      target: scanme.nmap.org
+    retries: 1
+    timeout: 600
+
+  - id: vuln_scan
+    name: Vulnerability Scan
+    adapter: nuclei
+    depends_on:
+      - discovery
+    params:
+      target: "{{ tasks.discovery.outputs.target_ip }}"
+    retries: 2
+    timeout: 300

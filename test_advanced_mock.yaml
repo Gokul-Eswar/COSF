@@ -1,0 +1,17 @@
+name: Mock Advanced Assessment
+tasks:
+  - id: t1
+    name: First Mock Task
+    adapter: mock
+    params:
+      target: 192.168.1.1
+    retries: 0
+
+  - id: t2
+    name: Second Mock Task (Dependent)
+    adapter: mock
+    depends_on:
+      - t1
+    params:
+      target: "{{ tasks.t1.outputs.target_ip }}"
+    retries: 1

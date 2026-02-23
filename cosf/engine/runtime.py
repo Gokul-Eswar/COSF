@@ -1,6 +1,7 @@
 import asyncio
+import re
 from datetime import datetime
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Set
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
 from cosf.engine.adapter import AdapterRegistry, TaskResult
 from cosf.models.database import WorkflowExecution, TaskExecution, DBAsset, DBService, DBVulnerability
@@ -11,32 +12,20 @@ from cosf.models.som import Asset, Service, Vulnerability
 class ExecutionEngine:
     """The core engine for orchestrating and executing security workflows.
 
-    The ExecutionEngine manages the sequential execution of tasks defined in a
-    WorkflowSchema, utilizing registered adapters to perform the actual work.
+    The ExecutionEngine manages the execution of tasks defined in a
+    WorkflowSchema, supporting dependencies, variable passing, retries, and timeouts.
     """
 
     def __init__(self, adapter_registry: AdapterRegistry = None):
-        """Initializes the execution engine.
-
-        Args:
-            adapter_registry: An optional AdapterRegistry instance. If not
-                provided, a new empty registry is created.
-        """
+        """Initializes the execution engine."""
         self.adapters = adapter_registry or AdapterRegistry()
+        self.context: Dict[str, Any] = {}
 
     async def run(self, workflow: WorkflowSchema):
-        """Executes a complete security workflow.
-
-        Iterates through the tasks in the workflow and executes them sequentially.
-        If a task fails, the workflow execution is halted.
-
-        Args:
-            workflow: The WorkflowSchema to execute.
-
-        Raises:
-            Exception: If any task execution fails.
-        """
+        """Executes a complete security workflow with dependency resolution."""
         await init_db()
+        self.context = {"tasks": {}}
+        
         async with AsyncSessionLocal() as session:
             db_exec = WorkflowExecution(
                 workflow_name=workflow.name,
@@ -50,8 +39,30 @@ class ExecutionEngine:
             print(f"Starting workflow: {workflow.name} (Execution ID: {db_exec.id})")
             
             try:
-                for task in workflow.tasks:
-                    await self.execute_task_in_context(task, db_exec.id, session)
+                executed_task_ids: Set[str] = set()
+                tasks_by_id = {task.id: task for task in workflow.tasks}
+                remaining_tasks = list(workflow.tasks)
+
+                while remaining_tasks:
+                    # Find tasks whose dependencies are met
+                    runnable_tasks = [
+                        t for t in remaining_tasks 
+                        if all(dep in executed_task_ids for dep in t.depends_on)
+                    ]
+
+                    if not runnable_tasks and remaining_tasks:
+                        raise Exception("Circular dependency detected or missing dependency in workflow.")
+
+                    for task in runnable_tasks:
+                        result = await self.execute_task_in_context(task, db_exec.id, session)
+                        # Store in context for variable passing
+                        outputs = {}
+                        if isinstance(result, TaskResult):
+                            outputs = result.outputs
+                        self.context["tasks"][task.id] = {"outputs": outputs}
+                        
+                        executed_task_ids.add(task.id)
+                        remaining_tasks.remove(task)
                 
                 db_exec.status = "completed"
             except Exception as e:
@@ -63,8 +74,27 @@ class ExecutionEngine:
                 await session.commit()
                 print(f"Workflow {db_exec.status}: {workflow.name}")
 
+    def _resolve_variables(self, params: Any) -> Any:
+        """Recursively resolves {{ tasks.ID.outputs.KEY }} in params."""
+        if isinstance(params, str):
+            pattern = r"\{\{\s*tasks\.(\w+)\.outputs\.(\w+)\s*\}\}"
+            matches = re.findall(pattern, params)
+            for task_id, key in matches:
+                val = self.context.get("tasks", {}).get(task_id, {}).get("outputs", {}).get(key)
+                if val is not None:
+                    params = params.replace(f"{{{{ tasks.{task_id}.outputs.{key} }}}}", str(val))
+            return params
+        elif isinstance(params, dict):
+            return {k: self._resolve_variables(v) for k, v in params.items()}
+        elif isinstance(params, list):
+            return [self._resolve_variables(i) for i in params]
+        return params
+
     async def execute_task_in_context(self, task: WorkflowTask, execution_id: str, session: AsyncSession):
-        """Executes a task and records its history."""
+        """Executes a task with retries, timeouts, and variable resolution."""
+        # Resolve variables in params
+        resolved_params = self._resolve_variables(task.params)
+
         db_task = TaskExecution(
             execution_id=execution_id,
             task_name=task.name,
@@ -76,37 +106,55 @@ class ExecutionEngine:
         await session.commit()
         await session.refresh(db_task)
 
-        print(f"Executing task: {task.name} with adapter: {task.adapter}")
-        try:
-            adapter = self.adapters.get(task.adapter)
-            result = await adapter.run(task.params)
+        print(f"Executing task: {task.name} (ID: {task.id}) with adapter: {task.adapter}")
+        
+        last_error = None
+        for attempt in range(task.retries + 1):
+            if attempt > 0:
+                print(f"Retrying task {task.id} (Attempt {attempt}/{task.retries})...")
             
-            db_task.status = "completed"
-            db_task.end_time = datetime.utcnow()
-            
-            entities = []
-            if isinstance(result, TaskResult):
-                entities = result.entities
-                db_task.raw_output = result.raw_output
-                if result.error:
-                    db_task.error = result.error
-            elif isinstance(result, list):
-                entities = result
-            else:
-                entities = [result]
-
-            db_task.result_json = [self._som_to_dict(e) for e in entities]
-            for item in entities:
-                await self._persist_som_object(item, session)
+            try:
+                adapter = self.adapters.get(task.adapter)
+                # Apply timeout
+                result = await asyncio.wait_for(adapter.run(resolved_params), timeout=task.timeout)
                 
-            await session.commit()
-            return result
-        except Exception as e:
-            db_task.status = "failed"
-            db_task.end_time = datetime.utcnow()
-            db_task.error = str(e)
-            await session.commit()
-            raise e
+                db_task.status = "completed"
+                db_task.end_time = datetime.utcnow()
+                
+                entities = []
+                if isinstance(result, TaskResult):
+                    entities = result.entities
+                    db_task.raw_output = result.raw_output
+                    db_task.result_json = {"outputs": result.outputs, "entities": [self._som_to_dict(e) for e in entities]}
+                elif isinstance(result, list):
+                    entities = result
+                    db_task.result_json = [self._som_to_dict(e) for e in entities]
+                else:
+                    entities = [result]
+                    db_task.result_json = [self._som_to_dict(e) for e in entities]
+
+                for item in entities:
+                    await self._persist_som_object(item, session)
+                    
+                await session.commit()
+                return result
+
+            except asyncio.TimeoutError:
+                last_error = f"Task timed out after {task.timeout}s"
+                print(f"Error: {last_error}")
+            except Exception as e:
+                last_error = str(e)
+                print(f"Error executing task: {last_error}")
+            
+            if attempt < task.retries:
+                await asyncio.sleep(2 ** attempt) # Exponential backoff
+
+        # If we reach here, all attempts failed
+        db_task.status = "failed"
+        db_task.end_time = datetime.utcnow()
+        db_task.error = last_error
+        await session.commit()
+        raise Exception(f"Task {task.id} failed after {task.retries + 1} attempts: {last_error}")
 
     def _som_to_dict(self, obj: Any) -> Any:
         if hasattr(obj, "model_dump"):
@@ -114,7 +162,7 @@ class ExecutionEngine:
         return obj
 
     async def _persist_som_object(self, obj: Any, session: AsyncSession):
-        """Persists a SOM object into the database if it matches known models."""
+        """Persists a SOM object into the database."""
         if isinstance(obj, Asset):
             db_asset = DBAsset(
                 id=obj.id,
@@ -147,10 +195,6 @@ class ExecutionEngine:
             await session.merge(db_vuln)
 
     async def execute_task(self, task: WorkflowTask) -> Any:
-        """Executes a single workflow task using the appropriate adapter.
-        Note: This is now a wrapper around execute_task_in_context for compatibility.
-        """
-        # For standalone task execution, we don't have a workflow context
-        # But for 'cosf run' we use 'run' which calls 'execute_task_in_context'
+        """Legacy compatibility wrapper."""
         adapter = self.adapters.get(task.adapter)
         return await adapter.run(task.params)

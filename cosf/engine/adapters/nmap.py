@@ -1,41 +1,42 @@
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, List
-import docker
-from cosf.engine.adapter import BaseAdapter
+from typing import Dict, Any, List, Union
+from cosf.engine.adapter import BaseAdapter, TaskResult
 from cosf.models.som import Asset, Service
 
 class NmapAdapter(BaseAdapter):
-    def __init__(self):
-        try:
-            self.client = docker.from_env()
-        except Exception:
-            self.client = None # Fallback for environments without docker
+    """Adapter for the Nmap security scanner."""
+    
+    ADAPTER_NAME = "nmap"
 
-    async def run(self, params: Dict[str, Any]) -> Dict[str, List[Any]]:
+    async def run(self, params: Dict[str, Any]) -> TaskResult:
         target = params.get("target")
         if not target:
             raise ValueError("Nmap adapter requires a 'target' parameter")
 
-        xml_output = await self._run_nmap(target)
-        return self._parse_xml(xml_output)
-
-    async def _run_nmap(self, target: str) -> str:
-        if not self.client:
-             raise RuntimeError("Docker is not available.")
-
-        # In a real async environment, we would use a thread pool or aiohttp for docker calls
-        # For MVP, we'll keep it simple
-        container = self.client.containers.run(
+        self.logger.info(f"Running Nmap scan on target: {target}")
+        
+        # Use helper from BaseAdapter
+        xml_output = self.run_container(
             "instrumentisto/nmap",
-            f"-oX - {target}",
-            remove=True
+            f"-oX - {target}"
         )
-        return container.decode("utf-8")
+        
+        entities = self._parse_xml(xml_output)
+        
+        # Capture the first IP found as an output for downstream tasks
+        target_ip = target
+        if entities and isinstance(entities[0], Asset):
+            target_ip = str(entities[0].ip_address)
 
-    def _parse_xml(self, xml_content: str) -> Dict[str, List[Any]]:
+        return TaskResult(
+            entities=entities,
+            outputs={"target_ip": target_ip},
+            raw_output=xml_output
+        )
+
+    def _parse_xml(self, xml_content: str) -> List[Union[Asset, Service]]:
         root = ET.fromstring(xml_content)
-        assets = []
-        services = []
+        entities = []
 
         for host in root.findall("host"):
             ip_address_elem = host.find("address")
@@ -55,7 +56,7 @@ class NmapAdapter(BaseAdapter):
                 name=hostname or ip_address,
                 ip_address=ip_address
             )
-            assets.append(asset)
+            entities.append(asset)
 
             # Extract ports/services
             ports_elem = host.find("ports")
@@ -77,6 +78,6 @@ class NmapAdapter(BaseAdapter):
                         name=service_name,
                         state=state
                     )
-                    services.append(service)
+                    entities.append(service)
 
-        return {"assets": assets, "services": services}
+        return entities

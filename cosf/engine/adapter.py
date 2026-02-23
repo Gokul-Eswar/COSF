@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class TaskResult(BaseModel):
     """Encapsulates the result of a task execution."""
     entities: List[Any] = []
+    outputs: Dict[str, Any] = {}
     raw_output: Optional[str] = None
     error: Optional[str] = None
 

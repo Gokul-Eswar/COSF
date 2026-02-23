@@ -3,9 +3,13 @@ from typing import List, Dict, Any
 from pydantic import BaseModel, Field, ValidationError
 
 class WorkflowTask(BaseModel):
+    id: str
     name: str
     adapter: str
+    depends_on: List[str] = Field(default_factory=list)
     params: Dict[str, Any] = Field(default_factory=dict)
+    retries: int = Field(default=0, ge=0)
+    timeout: int = Field(default=300, ge=1)  # Default 5 minutes
 
 class WorkflowSchema(BaseModel):
     name: str
