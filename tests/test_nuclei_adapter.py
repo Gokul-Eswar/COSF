@@ -3,6 +3,7 @@ import json
 from unittest.mock import MagicMock, AsyncMock, patch
 from cosf.engine.adapters.nuclei import NucleiAdapter
 from cosf.models.som import Vulnerability
+from cosf.engine.adapter import TaskResult
 
 @pytest.mark.asyncio
 async def test_nuclei_adapter_parsing():
@@ -19,11 +20,14 @@ async def test_nuclei_adapter_parsing():
     
     adapter = NucleiAdapter()
     
-    with patch("cosf.engine.adapters.nuclei.NucleiAdapter._run_nuclei", return_value=mock_output):
-        results = await adapter.run({"target": "192.168.1.1"})
+    with patch("cosf.engine.adapter.BaseAdapter.run_container", return_value=mock_output):
+        result = await adapter.run({"target": "192.168.1.1"})
         
-        assert len(results["vulnerabilities"]) == 1
-        vuln = results["vulnerabilities"][0]
+        assert isinstance(result, TaskResult)
+        vulnerabilities = result.entities
+        
+        assert len(vulnerabilities) == 1
+        vuln = vulnerabilities[0]
         assert vuln.cve_id == "cve-2021-1234"
         assert vuln.severity == "high"
         assert "Test Vulnerability" in vuln.description

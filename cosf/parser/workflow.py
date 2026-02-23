@@ -1,9 +1,13 @@
 import yaml
+import uuid
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field, ValidationError
 
+def generate_task_id():
+    return str(uuid.uuid4())[:8]
+
 class WorkflowTask(BaseModel):
-    id: str
+    id: str = Field(default_factory=generate_task_id)
     name: str
     adapter: str
     depends_on: List[str] = Field(default_factory=list)
