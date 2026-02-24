@@ -4,10 +4,13 @@ from datetime import datetime, timezone
 from typing import List, Any, Dict, Optional, Set
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
 from cosf.engine.adapter import AdapterRegistry, TaskResult
-from cosf.models.database import WorkflowExecution, TaskExecution, DBAsset, DBService, DBVulnerability
+from cosf.models.database import (
+    WorkflowExecution, TaskExecution, DBAsset, DBService, DBVulnerability,
+    DBCredential, DBAttackStep, DBRelationship
+)
 from cosf.models.db_session import AsyncSessionLocal, init_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from cosf.models.som import Asset, Service, Vulnerability
+from cosf.models.som import Asset, Service, Vulnerability, Credential, AttackStep, Relationship
 
 class ConditionEvaluator:
     """Evaluates conditional 'when' expressions against the execution context."""
@@ -292,6 +295,36 @@ class ExecutionEngine:
                 service_id=obj.service_id
             )
             await session.merge(db_vuln)
+        elif isinstance(obj, Credential):
+            db_cred = DBCredential(
+                id=obj.id,
+                asset_id=obj.asset_id,
+                username=obj.username,
+                password=obj.password,
+                password_hash=obj.password_hash,
+                type=obj.type,
+                source_task_id=obj.source_task_id
+            )
+            await session.merge(db_cred)
+        elif isinstance(obj, AttackStep):
+            db_step = DBAttackStep(
+                id=obj.id,
+                name=obj.name,
+                description=obj.description,
+                technique_id=obj.technique_id,
+                status=obj.status,
+                evidence_ids={"ids": obj.evidence_ids}
+            )
+            await session.merge(db_step)
+        elif isinstance(obj, Relationship):
+            db_rel = DBRelationship(
+                id=obj.id,
+                source_id=obj.source_id,
+                target_id=obj.target_id,
+                type=obj.type,
+                metadata_json=obj.metadata
+            )
+            await session.merge(db_rel)
 
     async def execute_task(self, task: WorkflowTask) -> Any:
         """Legacy compatibility wrapper."""

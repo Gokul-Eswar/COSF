@@ -1,5 +1,6 @@
 import asyncio
 import typer
+import json
 from pathlib import Path
 from cosf.parser.workflow import WorkflowParser
 from cosf.engine.runtime import ExecutionEngine
@@ -10,11 +11,14 @@ from cosf.models.db_session import AsyncSessionLocal
 from sqlalchemy import select
 
 from cosf.engine.reporting import ReportingEngine
+from cosf.engine.graph import GraphEngine
 from sqlalchemy.orm import selectinload
 
 app = typer.Typer(no_args_is_help=True)
 plugins_app = typer.Typer(help="Manage and list adapter plugins")
+graph_app = typer.Typer(help="Analyze and visualize attack paths")
 app.add_typer(plugins_app, name="plugins")
+app.add_typer(graph_app, name="graph")
 
 def get_engine():
     """Initializes and returns an ExecutionEngine with dynamically loaded adapters.
@@ -118,6 +122,50 @@ def list_plugins():
     typer.echo("-" * 60)
     for name, path in plugins.items():
         typer.echo(f"{name:<20} | {path}")
+
+@graph_app.command(name="analyze")
+def analyze_graph():
+    """Analyze the security relationship graph based on all execution results."""
+    async def analyze():
+        engine = GraphEngine()
+        await engine.build_from_db()
+        num_nodes = engine.graph.number_of_nodes()
+        num_edges = engine.graph.number_of_edges()
+        
+        typer.echo(f"Graph Analysis Summary:")
+        typer.echo(f"----------------------")
+        typer.echo(f"Total Nodes: {num_nodes}")
+        typer.echo(f"Total Edges: {num_edges}")
+        
+        types = {}
+        for _, attrs in engine.graph.nodes(data=True):
+            ntype = attrs.get('type', 'unknown')
+            types[ntype] = types.get(ntype, 0) + 1
+        
+        typer.echo("\nNode Type Distribution:")
+        for t, count in types.items():
+            typer.echo(f"- {t}: {count}")
+
+    try:
+        asyncio.run(analyze())
+    except Exception as e:
+        typer.echo(f"Error: Failed to analyze graph: {e}", err=True)
+        raise typer.Exit(code=1)
+
+@graph_app.command(name="visualize")
+def visualize_graph():
+    """Export the graph as JSON for visualization (D3.js)."""
+    async def visualize():
+        engine = GraphEngine()
+        await engine.build_from_db()
+        data = engine.get_graph_data()
+        typer.echo(json.dumps(data, indent=2))
+
+    try:
+        asyncio.run(visualize())
+    except Exception as e:
+        typer.echo(f"Error: Failed to export graph: {e}", err=True)
+        raise typer.Exit(code=1)
 
 if __name__ == "__main__":
     app()

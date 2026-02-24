@@ -63,3 +63,33 @@ class DBVulnerability(Base):
     description: Mapped[str] = mapped_column(String)
     remediation: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     service_id: Mapped[Optional[str]] = mapped_column(ForeignKey("services.id"), nullable=True)
+
+class DBCredential(Base):
+    __tablename__ = "credentials"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    asset_id: Mapped[Optional[str]] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    username: Mapped[str] = mapped_column(String(255))
+    password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    type: Mapped[str] = mapped_column(String(50))
+    source_task_id: Mapped[Optional[str]] = mapped_column(ForeignKey("task_executions.id"), nullable=True)
+
+class DBAttackStep(Base):
+    __tablename__ = "attack_steps"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String)
+    technique_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    status: Mapped[str] = mapped_column(String(50))
+    evidence_ids: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+class DBRelationship(Base):
+    __tablename__ = "relationships"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    source_id: Mapped[str] = mapped_column(String(36)) # Could be Asset ID, Service ID, etc.
+    target_id: Mapped[str] = mapped_column(String(36))
+    type: Mapped[str] = mapped_column(String(100))
+    metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from pydantic import BaseModel, Field, IPvAnyAddress
 from uuid import UUID, uuid4
 
@@ -25,3 +25,24 @@ class Vulnerability(SOMBase):
     description: str
     remediation: Optional[str] = None
     service_id: Optional[str] = None
+
+class Credential(SOMBase):
+    asset_id: Optional[str] = None
+    username: str
+    password: Optional[str] = None
+    password_hash: Optional[str] = None
+    type: str = "password"  # password, hash, token, key
+    source_task_id: Optional[str] = None
+
+class AttackStep(SOMBase):
+    name: str
+    description: str
+    technique_id: Optional[str] = None  # MITRE ATT&CK ID
+    status: str = "potential"  # potential, attempted, successful, failed
+    evidence_ids: List[str] = []
+
+class Relationship(SOMBase):
+    source_id: str
+    target_id: str
+    type: str  # HAS_VULNERABILITY, RUNS_SERVICE, ACCESSIBLE_VIA, EXPLOITS, USES_CREDENTIAL
+    metadata: Dict[str, Any] = {}
