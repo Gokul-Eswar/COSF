@@ -9,6 +9,73 @@ from cosf.models.db_session import AsyncSessionLocal, init_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from cosf.models.som import Asset, Service, Vulnerability
 
+class ConditionEvaluator:
+    """Evaluates conditional 'when' expressions against the execution context."""
+
+    def __init__(self, context: Dict[str, Any]):
+        self.context = context
+
+    def evaluate(self, condition: Optional[str]) -> bool:
+        if not condition:
+            return True
+        
+        # 1. Resolve variables first (e.g., {{ tasks.ID.outputs.KEY }})
+        resolved = self._resolve_variables(condition).strip()
+        
+        # 2. Basic expression parsing (for now supporting ==, !=, contains, in)
+        try:
+            # Handle direct booleans
+            if resolved.lower() == "true": return True
+            if resolved.lower() == "false": return False
+
+            # Match: "left_val" OPERATOR "right_val"
+            # Support: ==, !=, contains, in
+            pattern = r"^(.*?)\s+(==|!=|contains|in)\s+(.*)$"
+            match = re.match(pattern, resolved)
+            
+            if not match:
+                # Fallback: check if it's just a variable that resolved to a boolean string
+                return resolved.lower() in ("true", "1", "yes")
+
+            left, op, right = match.groups()
+            left = self._strip_quotes(left)
+            right = self._strip_quotes(right)
+
+            if op == "==":
+                return str(left) == str(right)
+            elif op == "!=":
+                return str(left) != str(right)
+            elif op == "contains":
+                # "left contains right" -> is right a substring of left?
+                return str(right) in str(left)
+            elif op == "in":
+                # "left in right" -> is left a substring of right?
+                return str(left) in str(right)
+            
+            return False
+        except Exception as e:
+            print(f"Error evaluating condition '{condition}': {e}")
+            return False
+
+    def _strip_quotes(self, s: str) -> str:
+        s = s.strip()
+        if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
+            return s[1:-1]
+        return s
+
+    def _resolve_variables(self, expression: str) -> str:
+        """Recursively resolves {{ tasks.ID.outputs.KEY }} in expression."""
+        pattern = r"\{\{\s*tasks\.(\w+)\.outputs\.(\w+)\s*\}\}"
+        matches = re.findall(pattern, expression)
+        for task_id, key in matches:
+            val = self.context.get("tasks", {}).get(task_id, {}).get("outputs", {}).get(key)
+            if val is not None:
+                expression = expression.replace(f"{{{{ tasks.{task_id}.outputs.{key} }}}}", str(val))
+            else:
+                # If variable not found, replace with 'None' or empty to avoid parsing issues
+                expression = expression.replace(f"{{{{ tasks.{task_id}.outputs.{key} }}}}", "None")
+        return expression
+
 class ExecutionEngine:
     """The core engine for orchestrating and executing security workflows.
 
@@ -25,6 +92,7 @@ class ExecutionEngine:
         """Executes a complete security workflow with dependency resolution."""
         await init_db()
         self.context = {"tasks": {}}
+        evaluator = ConditionEvaluator(self.context)
         
         async with AsyncSessionLocal() as session:
             db_exec = WorkflowExecution(
@@ -56,6 +124,12 @@ class ExecutionEngine:
                     async def run_task_wrapper(task):
                         # Use a separate session for each parallel task to avoid session conflicts
                         async with AsyncSessionLocal() as task_session:
+                            # Evaluate condition before execution
+                            if not evaluator.evaluate(task.when):
+                                print(f"Skipping task: {task.name} (ID: {task.id}) - condition '{task.when}' not met.")
+                                await self._record_skipped_task(task, db_exec.id, task_session)
+                                return task.id, "SKIPPED"
+
                             result = await self.execute_task_in_context(task, db_exec.id, task_session)
                             return task.id, result
 
@@ -64,8 +138,11 @@ class ExecutionEngine:
                     for task_id, result in task_results:
                         # Store in context for variable passing
                         outputs = {}
-                        if isinstance(result, TaskResult):
+                        if result == "SKIPPED":
+                             outputs = {} # No outputs for skipped tasks
+                        elif isinstance(result, TaskResult):
                             outputs = result.outputs
+                        
                         self.context["tasks"][task_id] = {"outputs": outputs}
                         
                         executed_task_ids.add(task_id)
@@ -82,6 +159,19 @@ class ExecutionEngine:
                 db_exec.end_time = datetime.now(timezone.utc)
                 await session.commit()
                 print(f"Workflow {db_exec.status}: {workflow.name}")
+
+    async def _record_skipped_task(self, task: WorkflowTask, execution_id: str, session: AsyncSession):
+        """Records a skipped task in the database."""
+        db_task = TaskExecution(
+            execution_id=execution_id,
+            task_name=task.name,
+            adapter=task.adapter,
+            status="skipped",
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc)
+        )
+        session.add(db_task)
+        await session.commit()
 
     def _resolve_variables(self, params: Any) -> Any:
         """Recursively resolves {{ tasks.ID.outputs.KEY }} in params."""

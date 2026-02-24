@@ -1,6 +1,6 @@
 import yaml
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field, ValidationError
 
 def generate_task_id():
@@ -14,6 +14,8 @@ class WorkflowTask(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict)
     retries: int = Field(default=0, ge=0)
     timeout: int = Field(default=300, ge=1)  # Default 5 minutes
+    when: Optional[str] = Field(default=None)
+    continue_on_failure: bool = Field(default=False)
 
 class WorkflowSchema(BaseModel):
     name: str
