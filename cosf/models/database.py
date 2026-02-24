@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy import String, Integer, ForeignKey, JSON, DateTime, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -13,7 +13,7 @@ class WorkflowExecution(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     workflow_name: Mapped[str] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(50))  # pending, running, completed, failed
-    start_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    start_time: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
     tasks: Mapped[List["TaskExecution"]] = relationship(back_populates="execution", cascade="all, delete-orphan")
@@ -26,7 +26,7 @@ class TaskExecution(Base):
     task_name: Mapped[str] = mapped_column(String(255))
     adapter: Mapped[str] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(50))
-    start_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    start_time: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     result_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     raw_output: Mapped[Optional[str]] = mapped_column(String, nullable=True)

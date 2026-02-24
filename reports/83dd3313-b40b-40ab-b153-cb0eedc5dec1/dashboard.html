@@ -1,0 +1,355 @@
+
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>COSF Dashboard - Parallel Execution Test</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
+                body { font-family: 'Inter', sans-serif; }
+                code, pre { font-family: 'JetBrains Mono', monospace; }
+                .status-completed { @apply bg-green-100 text-green-800 border-green-200; }
+                .status-failed { @apply bg-red-100 text-red-800 border-red-200; }
+                .status-running { @apply bg-blue-100 text-blue-800 border-blue-200; }
+            </style>
+        </head>
+        <body class="bg-gray-50 text-gray-900 min-h-screen">
+            <header class="bg-slate-900 text-white py-8 px-6 shadow-lg mb-8">
+                <div class="max-w-6xl mx-auto flex justify-between items-center">
+                    <div>
+                        <h1 class="text-3xl font-bold tracking-tight">Cyber Operations Report</h1>
+                        <p class="text-slate-400 mt-2">Workflow: <span class="text-white font-semibold">Parallel Execution Test</span></p>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-4 py-2 rounded-full text-sm font-bold uppercase border-2 
+                            status-completed">
+                            completed
+                        </span>
+                        <p class="text-slate-400 text-sm mt-3">ID: 83dd3313-b40b-40ab-b153-cb0eedc5dec1</p>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-6xl mx-auto px-6 pb-12">
+                <!-- Summary Section -->
+                <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-2">Started</h3>
+                        <p class="text-xl font-bold">2026-02-24 06:51:45</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-2">Duration</h3>
+                        <p class="text-xl font-bold">
+                            
+                                0.11s
+                            
+                        </p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-2">Tasks Executed</h3>
+                        <p class="text-xl font-bold">4</p>
+                    </div>
+                </section>
+
+                <!-- Tasks List -->
+                <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                        <h2 class="text-lg font-bold">Workflow Timeline</h2>
+                    </div>
+                    <table class="w-full">
+                        <thead class="bg-gray-50 text-gray-500 text-xs font-semibold uppercase">
+                            <tr>
+                                <th class="px-6 py-4 text-left">Task Name</th>
+                                <th class="px-6 py-4 text-left">Adapter</th>
+                                <th class="px-6 py-4 text-left">Status</th>
+                                <th class="px-6 py-4 text-left">Evidence</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-semibold">Task 3</td>
+                                <td class="px-6 py-4"><code class="text-indigo-600 bg-indigo-50 px-2 py-1 rounded text-sm">mock</code></td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase 
+                                        status-completed">
+                                        completed
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    
+                                        <a href="evidence/task_3_mock.txt" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            View Raw
+                                        </a>
+                                    
+                                </td>
+                            </tr>
+                            
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-semibold">Task 2</td>
+                                <td class="px-6 py-4"><code class="text-indigo-600 bg-indigo-50 px-2 py-1 rounded text-sm">mock</code></td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase 
+                                        status-completed">
+                                        completed
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    
+                                        <a href="evidence/task_2_mock.txt" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            View Raw
+                                        </a>
+                                    
+                                </td>
+                            </tr>
+                            
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-semibold">Task 1</td>
+                                <td class="px-6 py-4"><code class="text-indigo-600 bg-indigo-50 px-2 py-1 rounded text-sm">mock</code></td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase 
+                                        status-completed">
+                                        completed
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    
+                                        <a href="evidence/task_1_mock.txt" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            View Raw
+                                        </a>
+                                    
+                                </td>
+                            </tr>
+                            
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-semibold">Task 4</td>
+                                <td class="px-6 py-4"><code class="text-indigo-600 bg-indigo-50 px-2 py-1 rounded text-sm">mock</code></td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase 
+                                        status-completed">
+                                        completed
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    
+                                        <a href="evidence/task_4_mock.txt" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            View Raw
+                                        </a>
+                                    
+                                </td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Detailed Task Results -->
+                <h2 class="text-2xl font-bold mb-6">Execution Details</h2>
+                <div class="space-y-8">
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="text-xl font-bold">Task 3</h3>
+                            <code class="text-sm bg-gray-200 px-2 py-1 rounded">mock</code>
+                        </div>
+                        <div class="p-6">
+                            
+
+                            
+                            <h4 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Normalized Security Objects</h4>
+                            <div class="bg-slate-900 rounded-lg p-4 overflow-x-auto">
+                                <pre class="text-indigo-300 text-sm">{
+  "entities": [
+    {
+      "id": "16ef10b4-3fe9-4810-81a8-9da6c17dacd5",
+      "ip_address": "3.3.3.3",
+      "name": "mock-3.3.3.3",
+      "os": null,
+      "tags": []
+    },
+    {
+      "asset_id": "16ef10b4-3fe9-4810-81a8-9da6c17dacd5",
+      "id": "a6f1263e-2b1f-41c7-b99a-fa0fc6f65fc8",
+      "name": "http",
+      "port": 80,
+      "protocol": "tcp",
+      "state": "open"
+    },
+    {
+      "asset_id": "16ef10b4-3fe9-4810-81a8-9da6c17dacd5",
+      "cve_id": null,
+      "description": "Mock vulnerability on 3.3.3.3",
+      "id": "43a30e8c-33cc-4bfd-a979-275425de95ae",
+      "remediation": null,
+      "service_id": "a6f1263e-2b1f-41c7-b99a-fa0fc6f65fc8",
+      "severity": "high"
+    }
+  ],
+  "outputs": {
+    "status": "scanned",
+    "target_ip": "3.3.3.3"
+  }
+}</pre>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="text-xl font-bold">Task 2</h3>
+                            <code class="text-sm bg-gray-200 px-2 py-1 rounded">mock</code>
+                        </div>
+                        <div class="p-6">
+                            
+
+                            
+                            <h4 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Normalized Security Objects</h4>
+                            <div class="bg-slate-900 rounded-lg p-4 overflow-x-auto">
+                                <pre class="text-indigo-300 text-sm">{
+  "entities": [
+    {
+      "id": "7bbf6a0e-974f-43c4-9a4c-2c2e85b1f8bf",
+      "ip_address": "2.2.2.2",
+      "name": "mock-2.2.2.2",
+      "os": null,
+      "tags": []
+    },
+    {
+      "asset_id": "7bbf6a0e-974f-43c4-9a4c-2c2e85b1f8bf",
+      "id": "852b1fe7-725c-48f7-9c20-8d6a7266403f",
+      "name": "http",
+      "port": 80,
+      "protocol": "tcp",
+      "state": "open"
+    },
+    {
+      "asset_id": "7bbf6a0e-974f-43c4-9a4c-2c2e85b1f8bf",
+      "cve_id": null,
+      "description": "Mock vulnerability on 2.2.2.2",
+      "id": "736a4294-5f0a-4065-8ad0-8b4ef66f0af8",
+      "remediation": null,
+      "service_id": "852b1fe7-725c-48f7-9c20-8d6a7266403f",
+      "severity": "high"
+    }
+  ],
+  "outputs": {
+    "status": "scanned",
+    "target_ip": "2.2.2.2"
+  }
+}</pre>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="text-xl font-bold">Task 1</h3>
+                            <code class="text-sm bg-gray-200 px-2 py-1 rounded">mock</code>
+                        </div>
+                        <div class="p-6">
+                            
+
+                            
+                            <h4 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Normalized Security Objects</h4>
+                            <div class="bg-slate-900 rounded-lg p-4 overflow-x-auto">
+                                <pre class="text-indigo-300 text-sm">{
+  "entities": [
+    {
+      "id": "7a6838e0-2773-4c48-a473-3845fe070696",
+      "ip_address": "1.1.1.1",
+      "name": "mock-1.1.1.1",
+      "os": null,
+      "tags": []
+    },
+    {
+      "asset_id": "7a6838e0-2773-4c48-a473-3845fe070696",
+      "id": "e43047d7-4c46-40ee-81b9-4aaecc939c83",
+      "name": "http",
+      "port": 80,
+      "protocol": "tcp",
+      "state": "open"
+    },
+    {
+      "asset_id": "7a6838e0-2773-4c48-a473-3845fe070696",
+      "cve_id": null,
+      "description": "Mock vulnerability on 1.1.1.1",
+      "id": "9491bf06-1173-43ff-ada3-0841c1649ce4",
+      "remediation": null,
+      "service_id": "e43047d7-4c46-40ee-81b9-4aaecc939c83",
+      "severity": "high"
+    }
+  ],
+  "outputs": {
+    "status": "scanned",
+    "target_ip": "1.1.1.1"
+  }
+}</pre>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="text-xl font-bold">Task 4</h3>
+                            <code class="text-sm bg-gray-200 px-2 py-1 rounded">mock</code>
+                        </div>
+                        <div class="p-6">
+                            
+
+                            
+                            <h4 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Normalized Security Objects</h4>
+                            <div class="bg-slate-900 rounded-lg p-4 overflow-x-auto">
+                                <pre class="text-indigo-300 text-sm">{
+  "entities": [
+    {
+      "id": "c65229be-3a08-4e11-b1fb-765c00ce9467",
+      "ip_address": "4.4.4.4",
+      "name": "mock-4.4.4.4",
+      "os": null,
+      "tags": []
+    },
+    {
+      "asset_id": "c65229be-3a08-4e11-b1fb-765c00ce9467",
+      "id": "bbea1bd0-bddf-46a2-b8c6-dfa140891051",
+      "name": "http",
+      "port": 80,
+      "protocol": "tcp",
+      "state": "open"
+    },
+    {
+      "asset_id": "c65229be-3a08-4e11-b1fb-765c00ce9467",
+      "cve_id": null,
+      "description": "Mock vulnerability on 4.4.4.4",
+      "id": "9437a5b9-08d5-4e1a-86b3-ff187243b031",
+      "remediation": null,
+      "service_id": "bbea1bd0-bddf-46a2-b8c6-dfa140891051",
+      "severity": "high"
+    }
+  ],
+  "outputs": {
+    "status": "scanned",
+    "target_ip": "4.4.4.4"
+  }
+}</pre>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    
+                </div>
+            </main>
+            <footer class="bg-white border-t border-gray-200 py-8 text-center text-gray-500 text-sm">
+                Generated by Cyber Operations Standardization Framework (COSF) &bull; 2026-02-24 06:51:45
+            </footer>
+        </body>
+        </html>
+        

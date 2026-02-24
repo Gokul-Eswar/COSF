@@ -1,0 +1,3 @@
+DEBUG: Mock scan results for 3.3.3.3
+FOUND: Port 80 OPEN
+RESULT: 1 vulnerability detected.

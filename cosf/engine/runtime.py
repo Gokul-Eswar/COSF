@@ -1,6 +1,6 @@
 import asyncio
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Any, Dict, Optional, Set
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
 from cosf.engine.adapter import AdapterRegistry, TaskResult
@@ -30,7 +30,7 @@ class ExecutionEngine:
             db_exec = WorkflowExecution(
                 workflow_name=workflow.name,
                 status="running",
-                start_time=datetime.utcnow()
+                start_time=datetime.now(timezone.utc)
             )
             session.add(db_exec)
             await session.commit()
@@ -40,7 +40,6 @@ class ExecutionEngine:
             
             try:
                 executed_task_ids: Set[str] = set()
-                tasks_by_id = {task.id: task for task in workflow.tasks}
                 remaining_tasks = list(workflow.tasks)
 
                 while remaining_tasks:
@@ -53,16 +52,26 @@ class ExecutionEngine:
                     if not runnable_tasks and remaining_tasks:
                         raise Exception("Circular dependency detected or missing dependency in workflow.")
 
-                    for task in runnable_tasks:
-                        result = await self.execute_task_in_context(task, db_exec.id, session)
+                    # Execute runnable tasks in parallel
+                    async def run_task_wrapper(task):
+                        # Use a separate session for each parallel task to avoid session conflicts
+                        async with AsyncSessionLocal() as task_session:
+                            result = await self.execute_task_in_context(task, db_exec.id, task_session)
+                            return task.id, result
+
+                    task_results = await asyncio.gather(*(run_task_wrapper(t) for t in runnable_tasks))
+
+                    for task_id, result in task_results:
                         # Store in context for variable passing
                         outputs = {}
                         if isinstance(result, TaskResult):
                             outputs = result.outputs
-                        self.context["tasks"][task.id] = {"outputs": outputs}
+                        self.context["tasks"][task_id] = {"outputs": outputs}
                         
-                        executed_task_ids.add(task.id)
-                        remaining_tasks.remove(task)
+                        executed_task_ids.add(task_id)
+                        # Find and remove the task object from remaining_tasks
+                        task_obj = next(t for t in remaining_tasks if t.id == task_id)
+                        remaining_tasks.remove(task_obj)
                 
                 db_exec.status = "completed"
             except Exception as e:
@@ -70,7 +79,7 @@ class ExecutionEngine:
                 print(f"Workflow stopped due to failure: {e}")
                 raise e
             finally:
-                db_exec.end_time = datetime.utcnow()
+                db_exec.end_time = datetime.now(timezone.utc)
                 await session.commit()
                 print(f"Workflow {db_exec.status}: {workflow.name}")
 
@@ -100,7 +109,7 @@ class ExecutionEngine:
             task_name=task.name,
             adapter=task.adapter,
             status="running",
-            start_time=datetime.utcnow()
+            start_time=datetime.now(timezone.utc)
         )
         session.add(db_task)
         await session.commit()
@@ -119,7 +128,7 @@ class ExecutionEngine:
                 result = await asyncio.wait_for(adapter.run(resolved_params), timeout=task.timeout)
                 
                 db_task.status = "completed"
-                db_task.end_time = datetime.utcnow()
+                db_task.end_time = datetime.now(timezone.utc)
                 
                 entities = []
                 if isinstance(result, TaskResult):
@@ -151,7 +160,7 @@ class ExecutionEngine:
 
         # If we reach here, all attempts failed
         db_task.status = "failed"
-        db_task.end_time = datetime.utcnow()
+        db_task.end_time = datetime.now(timezone.utc)
         db_task.error = last_error
         await session.commit()
         raise Exception(f"Task {task.id} failed after {task.retries + 1} attempts: {last_error}")
