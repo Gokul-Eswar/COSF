@@ -7,6 +7,7 @@ class NmapAdapter(BaseAdapter):
     """Adapter for the Nmap security scanner."""
     
     ADAPTER_NAME = "nmap"
+    ADAPTER_DESCRIPTION = "Scans targets for open ports and services. Requires 'target' parameter (IP or hostname)."
 
     async def run(self, params: Dict[str, Any]) -> TaskResult:
         target = params.get("target")

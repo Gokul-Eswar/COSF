@@ -1,6 +1,7 @@
 import asyncio
 import typer
 import json
+import os
 from pathlib import Path
 from cosf.parser.workflow import WorkflowParser
 from cosf.engine.runtime import ExecutionEngine
@@ -12,6 +13,8 @@ from sqlalchemy import select
 
 from cosf.engine.reporting import ReportingEngine
 from cosf.engine.graph import GraphEngine
+from cosf.ai.prompts import PromptManager
+from cosf.ai.engine import GenerativeEngine
 from sqlalchemy.orm import selectinload
 
 app = typer.Typer(no_args_is_help=True)
@@ -165,6 +168,39 @@ def visualize_graph():
         asyncio.run(visualize())
     except Exception as e:
         typer.echo(f"Error: Failed to export graph: {e}", err=True)
+        raise typer.Exit(code=1)
+
+@app.command(name="generate")
+def generate_workflow_cli(
+    prompt: str = typer.Argument(..., help="Instruction for the workflow to generate"),
+    provider: str = typer.Option("ollama", "--provider", "-p", help="AI provider (ollama, openai)"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", "-k", envvar="OPENAI_API_KEY", help="OpenAI API Key")
+):
+    """Generate a COSF workflow from a natural language prompt."""
+    async def generate():
+        registry = AdapterRegistry()
+        load_adapters(registry)
+        
+        prompt_mgr = PromptManager(registered_adapters=registry.list_adapters())
+        ai_engine = GenerativeEngine(prompt_manager=prompt_mgr, provider=provider, api_key=api_key)
+        
+        typer.echo(f"Generating workflow with {provider}...")
+        yaml_content = await ai_engine.generate_workflow(prompt)
+        
+        typer.echo("\n--- Generated Workflow ---")
+        typer.echo(yaml_content)
+        typer.echo("--------------------------")
+        
+        try:
+            ai_engine.validate_generated_yaml(yaml_content)
+            typer.echo("\nWorkflow validation: SUCCESS")
+        except Exception as e:
+            typer.echo(f"\nWorkflow validation: FAILED - {e}", err=True)
+
+    try:
+        asyncio.run(generate())
+    except Exception as e:
+        typer.echo(f"Error: Failed to generate workflow: {e}", err=True)
         raise typer.Exit(code=1)
 
 if __name__ == "__main__":
