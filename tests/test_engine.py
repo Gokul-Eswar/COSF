@@ -47,6 +47,29 @@ async def test_engine_stops_on_failure(engine):
     assert adapter.run.call_count == 1
 
 @pytest.mark.asyncio
+async def test_engine_executes_independent_tasks_in_parallel(engine):
+    task1 = WorkflowTask(id="t1", name="Task 1", adapter="mock", params={})
+    task2 = WorkflowTask(id="t2", name="Task 2", adapter="mock", params={})
+    workflow = WorkflowSchema(name="Parallel Test", tasks=[task1, task2])
+
+    # Adapter that records when it starts and ends
+    start_times = []
+    
+    async def slow_run(params):
+        start_times.append(asyncio.get_event_loop().time())
+        await asyncio.sleep(0.1)
+        return {"result": "success"}
+
+    adapter = engine.adapters.get("mock")
+    adapter.run = AsyncMock(side_effect=slow_run)
+    
+    await engine.run(workflow)
+    
+    assert len(start_times) == 2
+    # If parallel, the difference between start times should be very small
+    assert abs(start_times[0] - start_times[1]) < 0.05
+
+@pytest.mark.asyncio
 async def test_engine_executes_task_directly(engine):
     task = WorkflowTask(name="Single Task", adapter="mock", params={})
     result = await engine.execute_task(task)
