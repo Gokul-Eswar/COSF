@@ -3,6 +3,7 @@ import typer
 import json
 import os
 from pathlib import Path
+from typing import Optional
 from cosf.parser.workflow import WorkflowParser
 from cosf.engine.runtime import ExecutionEngine
 from cosf.engine.adapter import AdapterRegistry

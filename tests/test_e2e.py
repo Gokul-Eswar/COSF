@@ -12,13 +12,16 @@ def complex_workflow(tmp_path):
         "name": "E2E Assessment",
         "tasks": [
             {
+                "id": "scan",
                 "name": "Scan Network",
                 "adapter": "nmap",
                 "params": {"target": "127.0.0.1"}
             },
             {
+                "id": "vuln",
                 "name": "Vulnerability Scan",
                 "adapter": "nuclei",
+                "depends_on": ["scan"],
                 "params": {"target": "https://127.0.0.1"}
             }
         ]

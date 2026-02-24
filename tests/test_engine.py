@@ -33,8 +33,8 @@ async def test_engine_executes_tasks_sequentially(engine):
 
 @pytest.mark.asyncio
 async def test_engine_stops_on_failure(engine):
-    task1 = WorkflowTask(name="Task 1", adapter="mock", params={})
-    task2 = WorkflowTask(name="Task 2", adapter="mock", params={})
+    task1 = WorkflowTask(id="t1", name="Task 1", adapter="mock", params={})
+    task2 = WorkflowTask(id="t2", name="Task 2", adapter="mock", params={}, depends_on=["t1"])
     workflow = WorkflowSchema(name="Test Workflow", tasks=[task1, task2])
 
     # Spy on adapter and fail
