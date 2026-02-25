@@ -35,5 +35,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [Folder](./tracks/adapter_expansion/)
 
 ---
-## [ ] Track: Advanced SOM & Evidence Management
+## [x] Track: Advanced SOM & Evidence Management
 - [Folder](./tracks/evidence_management/)

@@ -17,6 +17,7 @@ from cosf.engine.graph import GraphEngine
 from cosf.ai.prompts import PromptManager
 from cosf.ai.engine import GenerativeEngine
 from sqlalchemy.orm import selectinload
+from cosf.utils.crypto import CryptoManager
 
 app = typer.Typer(no_args_is_help=True)
 plugins_app = typer.Typer(help="Manage and list adapter plugins")
@@ -112,6 +113,47 @@ def report(
         asyncio.run(generate())
     except Exception as e:
         typer.echo(f"Error: Failed to generate report: {e}", err=True)
+        raise typer.Exit(code=1)
+
+@app.command(name="verify")
+def verify(execution_id: str = typer.Argument(..., help="Execution ID to verify")):
+    """Verify the cryptographic integrity of a workflow execution."""
+    async def verify_integrity():
+        async with AsyncSessionLocal() as session:
+            stmt = select(WorkflowExecution).where(WorkflowExecution.id == execution_id).options(selectinload(WorkflowExecution.tasks))
+            result = await session.execute(stmt)
+            execution = result.scalar_one_or_none()
+            
+            if not execution:
+                typer.echo(f"Error: Execution ID '{execution_id}' not found", err=True)
+                return
+
+            pub_key = execution.public_key
+            if not pub_key:
+                typer.echo("Error: No public key found for this execution (old or unsigned version)", err=True)
+                return
+
+            typer.echo(f"Verifying integrity for execution: {execution.id}")
+            
+            # Verify overall workflow signature
+            workflow_msg = f"{execution.id}:{execution.status}"
+            if CryptoManager.verify_signature(pub_key, workflow_msg, execution.signature):
+                 typer.echo("[SUCCESS] Workflow execution state signature is valid.")
+            else:
+                 typer.echo("[FAILED] Workflow execution state signature is INVALID or missing.")
+
+            # Verify individual task signatures
+            for task in execution.tasks:
+                task_msg = f"{task.id}:{task.raw_output or ''}"
+                if CryptoManager.verify_signature(pub_key, task_msg, task.signature):
+                    typer.echo(f"[SUCCESS] Task '{task.task_name}' signature is valid.")
+                else:
+                    typer.echo(f"[FAILED] Task '{task.task_name}' signature is INVALID or missing.")
+
+    try:
+        asyncio.run(verify_integrity())
+    except Exception as e:
+        typer.echo(f"Error: Verification failed: {e}", err=True)
         raise typer.Exit(code=1)
 
 @plugins_app.command(name="list")

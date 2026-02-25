@@ -9,13 +9,13 @@
 ## Phase 2: Cryptographic Integrity
 - [x] Implement `cosf/utils/crypto.py` for key generation and message signing.
 - [x] Add `signature` and `public_key` fields to `WorkflowExecution` and `TaskExecution` models.
-- [ ] Implement a CLI command `cosf verify <execution_id>` to validate signatures.
+- [x] Implement a CLI command `cosf verify <execution_id>` to validate signatures.
 
 ## Phase 3: Relationship & Graph Expansion
-- [ ] Add new relationship types: `LATERAL_MOVEMENT`, `CREDENTIAL_REUSE`, `PRIVILEGE_ESCALATION`.
+- [x] Add new relationship types: `LATERAL_MOVEMENT`, `CREDENTIAL_REUSE`, `PRIVILEGE_ESCALATION`.
 - [ ] Update `GraphEngine` to handle these specific types with specialized weights/attributes.
 
 ## Phase 4: Verification & Tests
-- [ ] Create `tests/test_evidence_management.py`.
-- [ ] Verify that binary files are correctly hashed and stored.
-- [ ] Test the verification command with both valid and tampered data.
+- [x] Create `tests/test_evidence_management.py`.
+- [x] Verify that binary files are correctly hashed and stored.
+- [x] Test the verification command with both valid and tampered data.

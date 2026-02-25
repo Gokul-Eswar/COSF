@@ -46,3 +46,15 @@ def test_crypto_manager_sign_verify():
     
     # Invalid signature
     assert CryptoManager.verify_signature(pub, message, "bm90IGEgc2lnbmF0dXJl") is False
+
+def test_verification_logic_with_tampering():
+    priv, pub = CryptoManager.generate_key_pair()
+    original_output = "Nmap scan results: 2 ports open"
+    signature = CryptoManager.sign_message(priv, f"task-123:{original_output}")
+    
+    # Validation succeeds with original data
+    assert CryptoManager.verify_signature(pub, f"task-123:{original_output}", signature) is True
+    
+    # Validation fails if output is tampered
+    tampered_output = "Nmap scan results: 0 ports open"
+    assert CryptoManager.verify_signature(pub, f"task-123:{tampered_output}", signature) is False

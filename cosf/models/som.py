@@ -52,5 +52,6 @@ class Evidence(SOMBase):
 class Relationship(SOMBase):
     source_id: str
     target_id: str
-    type: str  # HAS_VULNERABILITY, RUNS_SERVICE, ACCESSIBLE_VIA, EXPLOITS, USES_CREDENTIAL
+    type: str  # HAS_VULNERABILITY, RUNS_SERVICE, ACCESSIBLE_VIA, EXPLOITS, USES_CREDENTIAL, 
+               # LATERAL_MOVEMENT, CREDENTIAL_REUSE, PRIVILEGE_ESCALATION
     metadata: Dict[str, Any] = {}
