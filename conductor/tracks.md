@@ -19,15 +19,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [Archive Folder](./archive/advanced_workflow/)
 
 ---
-## [ ] Track: WDL 3.0 - Conditional & Dynamic Logic
+## [x] Track: WDL 3.0 - Conditional & Dynamic Logic
 - [Folder](./tracks/wdl_3_conditional_logic/)
 
 ---
-## [ ] Track: Attack Path Modeling & Graph Visualization
+## [x] Track: Attack Path Modeling & Graph Visualization
 - [Folder](./tracks/attack_path_modeling/)
 
 ---
-## [ ] Track: AI-Assisted Workflow Generation
+## [x] Track: AI-Assisted Workflow Generation
 - [Folder](./tracks/ai_workflow_generation/)
 
 ---
