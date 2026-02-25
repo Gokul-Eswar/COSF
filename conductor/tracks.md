@@ -33,3 +33,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [x] Track: Expanded Adapter Ecosystem
 - [Folder](./tracks/adapter_expansion/)
+
+---
+## [ ] Track: Advanced SOM & Evidence Management
+- [Folder](./tracks/evidence_management/)

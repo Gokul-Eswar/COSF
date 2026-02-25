@@ -6,11 +6,12 @@ from cosf.parser.workflow import WorkflowSchema, WorkflowTask
 from cosf.engine.adapter import AdapterRegistry, TaskResult
 from cosf.models.database import (
     WorkflowExecution, TaskExecution, DBAsset, DBService, DBVulnerability,
-    DBCredential, DBAttackStep, DBRelationship
+    DBCredential, DBAttackStep, DBRelationship, DBEvidence
 )
 from cosf.models.db_session import AsyncSessionLocal, init_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from cosf.models.som import Asset, Service, Vulnerability, Credential, AttackStep, Relationship
+from cosf.models.som import Asset, Service, Vulnerability, Credential, AttackStep, Relationship, Evidence
+from cosf.utils.crypto import CryptoManager
 
 class ConditionEvaluator:
     """Evaluates conditional 'when' expressions against the execution context."""
@@ -97,11 +98,15 @@ class ExecutionEngine:
         self.context = {"tasks": {}}
         evaluator = ConditionEvaluator(self.context)
         
+        # Generate keys for this execution instance
+        priv_key, pub_key = CryptoManager.generate_key_pair()
+        
         async with AsyncSessionLocal() as session:
             db_exec = WorkflowExecution(
                 workflow_name=workflow.name,
                 status="running",
-                start_time=datetime.now(timezone.utc)
+                start_time=datetime.now(timezone.utc),
+                public_key=pub_key
             )
             session.add(db_exec)
             await session.commit()
@@ -133,7 +138,7 @@ class ExecutionEngine:
                                 await self._record_skipped_task(task, db_exec.id, task_session)
                                 return task.id, "SKIPPED"
 
-                            result = await self.execute_task_in_context(task, db_exec.id, task_session)
+                            result = await self.execute_task_in_context(task, db_exec.id, task_session, priv_key)
                             return task.id, result
 
                     task_results = await asyncio.gather(*(run_task_wrapper(t) for t in runnable_tasks))
@@ -154,8 +159,11 @@ class ExecutionEngine:
                         remaining_tasks.remove(task_obj)
                 
                 db_exec.status = "completed"
+                # Sign the overall completion state
+                db_exec.signature = CryptoManager.sign_message(priv_key, f"{db_exec.id}:completed")
             except Exception as e:
                 db_exec.status = "failed"
+                db_exec.signature = CryptoManager.sign_message(priv_key, f"{db_exec.id}:failed:{str(e)}")
                 print(f"Workflow stopped due to failure: {e}")
                 raise e
             finally:
@@ -192,7 +200,7 @@ class ExecutionEngine:
             return [self._resolve_variables(i) for i in params]
         return params
 
-    async def execute_task_in_context(self, task: WorkflowTask, execution_id: str, session: AsyncSession):
+    async def execute_task_in_context(self, task: WorkflowTask, execution_id: str, session: AsyncSession, private_key: str):
         """Executes a task with retries, timeouts, and variable resolution."""
         # Resolve variables in params
         resolved_params = self._resolve_variables(task.params)
@@ -234,6 +242,9 @@ class ExecutionEngine:
                 else:
                     entities = [result]
                     db_task.result_json = [self._som_to_dict(e) for e in entities]
+
+                # Sign the task output
+                db_task.signature = CryptoManager.sign_message(private_key, f"{db_task.id}:{db_task.raw_output or ''}")
 
                 for item in entities:
                     await self._persist_som_object(item, session)
@@ -316,6 +327,17 @@ class ExecutionEngine:
                 evidence_ids={"ids": obj.evidence_ids}
             )
             await session.merge(db_step)
+        elif isinstance(obj, Evidence):
+            db_evidence = DBEvidence(
+                id=obj.id,
+                name=obj.name,
+                type=obj.type,
+                file_path=obj.file_path,
+                hash_sha256=obj.hash_sha256,
+                task_id=obj.task_id,
+                metadata_json=obj.metadata
+            )
+            await session.merge(db_evidence)
         elif isinstance(obj, Relationship):
             db_rel = DBRelationship(
                 id=obj.id,

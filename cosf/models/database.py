@@ -15,6 +15,8 @@ class WorkflowExecution(Base):
     status: Mapped[str] = mapped_column(String(50))  # pending, running, completed, failed
     start_time: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    signature: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    public_key: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     
     tasks: Mapped[List["TaskExecution"]] = relationship(back_populates="execution", cascade="all, delete-orphan")
 
@@ -28,6 +30,7 @@ class TaskExecution(Base):
     status: Mapped[str] = mapped_column(String(50))
     start_time: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    signature: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     result_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     raw_output: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     error: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -84,6 +87,17 @@ class DBAttackStep(Base):
     technique_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(50))
     evidence_ids: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+class DBEvidence(Base):
+    __tablename__ = "evidence"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    name: Mapped[str] = mapped_column(String(255))
+    type: Mapped[str] = mapped_column(String(100))
+    file_path: Mapped[str] = mapped_column(String)
+    hash_sha256: Mapped[str] = mapped_column(String(64))
+    task_id: Mapped[Optional[str]] = mapped_column(ForeignKey("task_executions.id"), nullable=True)
+    metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 class DBRelationship(Base):
     __tablename__ = "relationships"

@@ -41,6 +41,14 @@ class AttackStep(SOMBase):
     status: str = "potential"  # potential, attempted, successful, failed
     evidence_ids: List[str] = []
 
+class Evidence(SOMBase):
+    name: str
+    type: str  # pcap, screenshot, log, binary_artifact
+    file_path: str
+    hash_sha256: str
+    task_id: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+
 class Relationship(SOMBase):
     source_id: str
     target_id: str
