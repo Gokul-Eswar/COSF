@@ -40,9 +40,22 @@ def version():
     """Show the current version of COSF."""
     typer.echo("COSF v0.1.0")
 
+@app.command(name="serve")
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind the server to"),
+    port: int = typer.Option(8000, "--port", "-p", help="Port to bind the server to")
+):
+    """Start the COSF API Control Plane server."""
+    import uvicorn
+    typer.echo(f"Starting COSF API server on {host}:{port}...")
+    uvicorn.run("cosf.api.main:app", host=host, port=port, reload=True)
+
 @app.command(name="run")
-def run(workflow_file: str = typer.Argument(..., help="Path to the workflow YAML file")):
-    """Run a security workflow from a YAML file."""
+def run(
+    workflow_file: str = typer.Argument(..., help="Path to the workflow YAML file"),
+    remote: Optional[str] = typer.Option(None, "--remote", "-r", help="URL of a remote COSF server to run the workflow on")
+):
+    """Run a security workflow from a YAML file (Locally or Remotely)."""
     workflow_path = Path(workflow_file)
     if not workflow_path.exists():
         typer.echo(f"Error: File '{workflow_file}' not found", err=True)
@@ -50,10 +63,24 @@ def run(workflow_file: str = typer.Argument(..., help="Path to the workflow YAML
 
     try:
         content = workflow_path.read_text()
+        if remote:
+            # Remote execution mode
+            import httpx
+            typer.echo(f"Sending workflow to remote server: {remote}...")
+            response = httpx.post(
+                f"{remote.rstrip('/')}/workflows/run",
+                json={"workflow_yaml": content},
+                timeout=30.0
+            )
+            response.raise_for_status()
+            typer.echo(f"Workflow accepted by remote: {response.json().get('message')}")
+            return
+
+        # Local execution mode
         parser = WorkflowParser()
         workflow = parser.parse(content)
     except Exception as e:
-        typer.echo(f"Error: Failed to parse workflow: {e}", err=True)
+        typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)
 
     engine = get_engine()
