@@ -41,3 +41,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [x] Track: Cloud Integration
 - [Folder](./tracks/cloud_integration/)
+
+---
+## [ ] Track: Advanced Security Intelligence & Autonomous Inference
+- [Folder](./tracks/security_intelligence/)

@@ -3,28 +3,40 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import select
 from cosf.models.database import DBAsset, DBService, DBVulnerability, DBCredential, DBRelationship
 from cosf.models.db_session import AsyncSessionLocal
+from cosf.engine.intelligence import InferenceEngine
+from cosf.models.som import Asset, Service, Vulnerability, Credential, Relationship
 
 class GraphEngine:
     """Engine for building and analyzing security relationship graphs."""
 
     def __init__(self):
         self.graph = nx.DiGraph()
+        self.intelligence = InferenceEngine()
 
-    async def build_from_db(self):
+    async def build_from_db(self, infer: bool = False):
         """Builds the graph by fetching all relevant entities and relationships from the DB."""
         self.graph.clear()
         
         async with AsyncSessionLocal() as session:
             # 1. Load Nodes
+            entities_for_inference = {
+                "assets": [],
+                "services": [],
+                "vulnerabilities": [],
+                "credentials": []
+            }
+
             assets = await session.execute(select(DBAsset))
             for a in assets.scalars():
                 self.graph.add_node(a.id, type="asset", label=a.name, ip=a.ip_address, os=a.os)
+                entities_for_inference["assets"].append(Asset(id=a.id, name=a.name, ip_address=a.ip_address, os=a.os))
 
             services = await session.execute(select(DBService))
             for s in services.scalars():
                 self.graph.add_node(s.id, type="service", label=f"{s.protocol}/{s.port}", name=s.name)
                 # Implicit relationship: Asset HAS Service
                 self.graph.add_edge(s.asset_id, s.id, type="HAS_SERVICE")
+                entities_for_inference["services"].append(Service(id=s.id, asset_id=s.asset_id, port=s.port, protocol=s.protocol, name=s.name, state=s.state))
 
             vulns = await session.execute(select(DBVulnerability))
             for v in vulns.scalars():
@@ -34,17 +46,25 @@ class GraphEngine:
                     self.graph.add_edge(v.service_id, v.id, type="HAS_VULNERABILITY")
                 else:
                     self.graph.add_edge(v.asset_id, v.id, type="HAS_VULNERABILITY")
+                entities_for_inference["vulnerabilities"].append(Vulnerability(id=v.id, asset_id=v.asset_id, cve_id=v.cve_id, severity=v.severity, description=v.description))
 
             creds = await session.execute(select(DBCredential))
             for c in creds.scalars():
                 self.graph.add_node(c.id, type="credential", label=c.username, cred_type=c.type)
                 if c.asset_id:
                     self.graph.add_edge(c.asset_id, c.id, type="HAS_CREDENTIAL")
+                entities_for_inference["credentials"].append(Credential(id=c.id, asset_id=c.asset_id, username=c.username, password=c.password, password_hash=c.password_hash, type=c.type))
 
             # 2. Load Explicit Relationships
             rels = await session.execute(select(DBRelationship))
             for r in rels.scalars():
                 self.graph.add_edge(r.source_id, r.target_id, type=r.type, **(r.metadata_json or {}))
+
+            # 3. Perform Autonomous Inference if requested
+            if infer:
+                inferred_rels = self.intelligence.infer_relationships(entities_for_inference)
+                for ir in inferred_rels:
+                    self.graph.add_edge(ir.source_id, ir.target_id, type=ir.type, inferred=True, **ir.metadata)
 
     def find_attack_paths(self, source_id: str, target_id: str) -> List[List[str]]:
         """Finds all simple paths between two nodes."""

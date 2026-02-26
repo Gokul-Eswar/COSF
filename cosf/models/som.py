@@ -10,6 +10,7 @@ class Asset(SOMBase):
     ip_address: IPvAnyAddress
     os: Optional[str] = None
     tags: List[str] = []
+    risk_score: float = 0.0
 
 class Service(SOMBase):
     asset_id: str
