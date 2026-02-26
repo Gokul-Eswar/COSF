@@ -47,5 +47,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [Folder](./tracks/security_intelligence/)
 
 ---
-## [ ] Track: Enterprise Foundation & API Control Plane
+## [x] Track: Enterprise Foundation & API Control Plane
 - [Folder](./tracks/enterprise_control_plane/)
+
+---
+## [x] Track: Unified Web Dashboard & Visualization
+- [Folder](./tracks/web_dashboard/)
