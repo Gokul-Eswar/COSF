@@ -37,3 +37,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [x] Track: Advanced SOM & Evidence Management
 - [Folder](./tracks/evidence_management/)
+
+---
+## [x] Track: Cloud Integration
+- [Folder](./tracks/cloud_integration/)

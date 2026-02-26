@@ -1,16 +1,13 @@
-import os
-import shutil
 import hashlib
 from typing import Optional, Dict, Any
 from cosf.models.som import Evidence
+from cosf.utils.storage import StorageProvider, LocalStorageProvider
 
 class EvidenceManager:
     """Manages the storage and retrieval of binary evidence artifacts."""
 
-    def __init__(self, storage_path: str = "cosf_evidence"):
-        self.storage_path = storage_path
-        if not os.path.exists(self.storage_path):
-            os.makedirs(self.storage_path)
+    def __init__(self, storage: Optional[StorageProvider] = None):
+        self.storage = storage or LocalStorageProvider(storage_path="cosf_evidence")
 
     def store_artifact(self, name: str, artifact_type: str, data: bytes, task_id: Optional[str] = None, metadata: Dict[str, Any] = None) -> Evidence:
         """Stores a binary artifact and returns an Evidence SOM object."""
@@ -18,21 +15,18 @@ class EvidenceManager:
         # Calculate SHA256 hash
         sha256_hash = hashlib.sha256(data).hexdigest()
         
-        # Determine file path (use hash for deduplication or unique naming)
+        # Determine unique key/filename
         file_extension = self._get_extension(artifact_type)
-        filename = f"{sha256_hash}{file_extension}"
-        dest_path = os.path.join(self.storage_path, filename)
+        key = f"{sha256_hash}{file_extension}"
         
-        # Write file if it doesn't exist
-        if not os.path.exists(dest_path):
-            with open(dest_path, "wb") as f:
-                f.write(data)
+        # Store using provider
+        ref_path = self.storage.store(key, data)
         
         # Create SOM object
         evidence = Evidence(
             name=name,
             type=artifact_type,
-            file_path=dest_path,
+            file_path=ref_path,
             hash_sha256=sha256_hash,
             task_id=task_id,
             metadata=metadata or {}
@@ -51,6 +45,9 @@ class EvidenceManager:
         }
         return mapping.get(artifact_type.lower(), ".artifact")
 
-    def get_artifact_path(self, evidence: Evidence) -> str:
-        """Returns the absolute path to the artifact."""
-        return os.path.abspath(evidence.file_path)
+    def get_artifact_data(self, evidence: Evidence) -> bytes:
+        """Retrieves the raw artifact data."""
+        # Note: In a real S3 scenario, this might need parsing the s3:// URI
+        # For local paths, it's straightforward.
+        key = evidence.file_path.split("/")[-1] # Simplistic for now
+        return self.storage.retrieve(key)

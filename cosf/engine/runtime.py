@@ -205,6 +205,15 @@ class ExecutionEngine:
         # Resolve variables in params
         resolved_params = self._resolve_variables(task.params)
 
+        # Inject cloud credentials from environment if available and not already set
+        if task.adapter == "aws":
+            if "aws_access_key_id" not in resolved_params and os.environ.get("AWS_ACCESS_KEY_ID"):
+                resolved_params["aws_access_key_id"] = os.environ.get("AWS_ACCESS_KEY_ID")
+            if "aws_secret_access_key" not in resolved_params and os.environ.get("AWS_SECRET_ACCESS_KEY"):
+                resolved_params["aws_secret_access_key"] = os.environ.get("AWS_SECRET_ACCESS_KEY")
+            if "aws_session_token" not in resolved_params and os.environ.get("AWS_SESSION_TOKEN"):
+                resolved_params["aws_session_token"] = os.environ.get("AWS_SESSION_TOKEN")
+
         db_task = TaskExecution(
             execution_id=execution_id,
             task_name=task.name,

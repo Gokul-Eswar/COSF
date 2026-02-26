@@ -9,6 +9,11 @@ This directory contains the pluggable adapters that allow the COSF engine to com
     - `target`: (Required) IP address or hostname.
 - **nuclei**: Template-based vulnerability scanner.
     - `target`: (Required) URL, IP, or hostname.
+- **aws**: Infrastructure reconnaissance and security posture checks.
+    - `operation`: (Required) The operation to perform (e.g., `s3_list_buckets`).
+    - `region`: (Optional) AWS region (Default: `us-east-1`).
+    - `aws_access_key_id`: (Optional) Can also be set via environment.
+    - `aws_secret_access_key`: (Optional) Can also be set via environment.
 
 ### Web Application Security
 - **zap**: Dynamic Application Security Testing (DAST) using OWASP ZAP.
