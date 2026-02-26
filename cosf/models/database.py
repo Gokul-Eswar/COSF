@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import List, Optional
-from sqlalchemy import String, Integer, ForeignKey, JSON, DateTime, Boolean
+from sqlalchemy import String, Integer, ForeignKey, JSON, DateTime, Boolean, Float
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from uuid import uuid4
 
@@ -45,6 +45,7 @@ class DBAsset(Base):
     ip_address: Mapped[str] = mapped_column(String(50))
     os: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     tags: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    risk_score: Mapped[float] = mapped_column(Float, default=0.0)
 
 class DBService(Base):
     __tablename__ = "services"

@@ -1,6 +1,6 @@
 import pytest
 from cosf.engine.intelligence import InferenceEngine, CredentialReuseRule, ServiceMatchingRule
-from cosf.models.som import Asset, Service, Credential
+from cosf.models.som import Asset, Service, Credential, Vulnerability
 
 def test_credential_reuse_rule():
     rule = CredentialReuseRule()
@@ -47,3 +47,29 @@ def test_inference_engine_integration():
     types = [r.type for r in rels]
     assert "CREDENTIAL_REUSE" in types
     assert "SAME_SERVICE" in types
+
+def test_risk_scorer():
+    engine = InferenceEngine()
+    
+    asset = Asset(id="A", name="A", ip_address="1.1.1.1")
+    s1 = Service(asset_id="A", port=80, protocol="tcp")
+    s2 = Service(asset_id="A", port=443, protocol="tcp")
+    v1 = Vulnerability(asset_id="A", severity="high", description="XSS")
+    v2 = Vulnerability(asset_id="A", severity="critical", description="RCE")
+    
+    entities = {
+        "assets": [asset],
+        "services": [s1, s2],
+        "vulnerabilities": [v1, v2]
+    }
+    
+    scores = engine.calculate_risk_scores(entities)
+    assert "A" in scores
+    # Base(1) + 2 services(1) + high(2.5) + critical(4) = 8.5
+    assert scores["A"] == 8.5
+
+    # Test capping
+    v3 = Vulnerability(asset_id="A", severity="critical", description="Another RCE")
+    entities["vulnerabilities"].append(v3)
+    scores = engine.calculate_risk_scores(entities)
+    assert scores["A"] == 10.0

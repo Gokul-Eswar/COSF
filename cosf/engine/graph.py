@@ -65,6 +65,12 @@ class GraphEngine:
                 inferred_rels = self.intelligence.infer_relationships(entities_for_inference)
                 for ir in inferred_rels:
                     self.graph.add_edge(ir.source_id, ir.target_id, type=ir.type, inferred=True, **ir.metadata)
+                
+                # Calculate risk scores
+                scores = self.intelligence.calculate_risk_scores(entities_for_inference)
+                for asset_id, score in scores.items():
+                    if asset_id in self.graph:
+                        self.graph.nodes[asset_id]["risk_score"] = score
 
     def find_attack_paths(self, source_id: str, target_id: str) -> List[List[str]]:
         """Finds all simple paths between two nodes."""

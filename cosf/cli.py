@@ -170,11 +170,11 @@ def list_plugins():
         typer.echo(f"{name:<20} | {path}")
 
 @graph_app.command(name="analyze")
-def analyze_graph():
+def analyze_graph(infer: bool = typer.Option(False, "--infer", "-i", help="Perform autonomous relationship inference")):
     """Analyze the security relationship graph based on all execution results."""
     async def analyze():
         engine = GraphEngine()
-        await engine.build_from_db()
+        await engine.build_from_db(infer=infer)
         num_nodes = engine.graph.number_of_nodes()
         num_edges = engine.graph.number_of_edges()
         
@@ -184,13 +184,24 @@ def analyze_graph():
         typer.echo(f"Total Edges: {num_edges}")
         
         types = {}
-        for _, attrs in engine.graph.nodes(data=True):
+        high_risk_assets = []
+        for node_id, attrs in engine.graph.nodes(data=True):
             ntype = attrs.get('type', 'unknown')
             types[ntype] = types.get(ntype, 0) + 1
+            
+            if ntype == "asset" and attrs.get("risk_score", 0) > 7.0:
+                high_risk_assets.append((attrs.get("label"), attrs.get("risk_score")))
         
         typer.echo("\nNode Type Distribution:")
         for t, count in types.items():
             typer.echo(f"- {t}: {count}")
+
+        if high_risk_assets:
+            typer.echo("\nHigh Risk Assets Found (>7.0):")
+            for name, score in sorted(high_risk_assets, key=lambda x: x[1], reverse=True):
+                typer.echo(f"- {name}: {score:.1f}/10.0")
+        elif infer:
+             typer.echo("\nNo High Risk Assets Found.")
 
     try:
         asyncio.run(analyze())

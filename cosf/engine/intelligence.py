@@ -73,6 +73,7 @@ class InferenceEngine:
             CredentialReuseRule(),
             ServiceMatchingRule()
         ]
+        self.scorer = RiskScorer()
 
     def infer_relationships(self, entities: Dict[str, List[Any]]) -> List[Relationship]:
         """Applies all rules to the provided entities and returns inferred relationships."""
@@ -80,3 +81,47 @@ class InferenceEngine:
         for rule in self.rules:
             all_inferred.extend(rule.apply(entities))
         return all_inferred
+
+    def calculate_risk_scores(self, entities: Dict[str, List[Any]]) -> Dict[str, float]:
+        """Calculates risk scores for all assets."""
+        return self.scorer.calculate(entities)
+
+class RiskScorer:
+    """Calculates security risk scores for assets based on their characteristics and findings."""
+
+    def calculate(self, entities: Dict[str, List[Any]]) -> Dict[str, float]:
+        scores = {}
+        assets = entities.get("assets", [])
+        services = entities.get("services", [])
+        vulns = entities.get("vulnerabilities", [])
+
+        # Group data by asset_id for efficient lookup
+        asset_services: Dict[str, List[Service]] = {}
+        for s in services:
+            if s.asset_id not in asset_services: asset_services[s.asset_id] = []
+            asset_services[s.asset_id].append(s)
+
+        asset_vulns: Dict[str, List[Vulnerability]] = {}
+        for v in vulns:
+            if v.asset_id not in asset_vulns: asset_vulns[v.asset_id] = []
+            asset_vulns[v.asset_id].append(v)
+
+        for asset in assets:
+            score = 1.0 # Base score
+            
+            # 1. Service Factor (more exposure = higher risk)
+            s_count = len(asset_services.get(asset.id, []))
+            score += min(s_count * 0.5, 3.0) # Cap at +3.0
+
+            # 2. Vulnerability Factor (severity based)
+            a_vulns = asset_vulns.get(asset.id, [])
+            for v in a_vulns:
+                if v.severity.lower() == "critical": score += 4.0
+                elif v.severity.lower() == "high": score += 2.5
+                elif v.severity.lower() == "medium": score += 1.0
+                elif v.severity.lower() == "low": score += 0.2
+
+            # Cap the final score at 10.0
+            scores[asset.id] = min(score, 10.0)
+            
+        return scores
