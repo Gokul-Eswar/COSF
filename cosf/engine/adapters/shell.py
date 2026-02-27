@@ -13,7 +13,7 @@ class ShellAdapter(BaseAdapter):
     ADAPTER_NAME = "shell"
     ADAPTER_DESCRIPTION = "Executes arbitrary shell commands on the host system."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def run(self, params: Dict[str, Any], dry_run: bool = False) -> TaskResult:
         command = params.get("command")
         if not command:
             raise ValueError("Shell adapter requires a 'command' parameter.")

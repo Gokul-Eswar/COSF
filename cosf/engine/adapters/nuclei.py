@@ -10,7 +10,7 @@ class NucleiAdapter(BaseAdapter):
     ADAPTER_NAME = "nuclei"
     ADAPTER_DESCRIPTION = "Template-based vulnerability scanner. Requires 'target' parameter (URL or IP)."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def run(self, params: Dict[str, Any], dry_run: bool = False) -> TaskResult:
         target = params.get("target")
         if not target:
             raise ValueError("Nuclei adapter requires a 'target' parameter")

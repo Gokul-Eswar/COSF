@@ -10,7 +10,7 @@ class NmapAdapter(BaseAdapter):
     ADAPTER_NAME = "nmap"
     ADAPTER_DESCRIPTION = "Scans targets for open ports and services. Requires 'target' parameter (IP or hostname)."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def run(self, params: Dict[str, Any], dry_run: bool = False) -> TaskResult:
         target = params.get("target")
         if not target:
             raise ValueError("Nmap adapter requires a 'target' parameter")

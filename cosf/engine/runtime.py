@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import List, Any, Dict, Optional, Set
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
 from cosf.engine.adapter import AdapterRegistry, TaskResult
+from cosf.engine.simulation import MockResponseGenerator
 from cosf.models.database import (
     WorkflowExecution, TaskExecution, DBAsset, DBService, DBVulnerability,
     DBCredential, DBAttackStep, DBRelationship, DBEvidence
@@ -239,14 +240,10 @@ class ExecutionEngine:
                 
                 if dry_run:
                     # Simulation mode logic
-                    result = TaskResult(
-                        entities=[],
-                        outputs={"status": "simulated", "message": "Dry run successful"},
-                        raw_output="SIMULATED OUTPUT"
-                    )
+                    result = MockResponseGenerator.generate(task.adapter, resolved_params)
                 else:
                     # Apply timeout for real execution
-                    result = await asyncio.wait_for(adapter.run(resolved_params), timeout=task.timeout)
+                    result = await asyncio.wait_for(adapter.run(resolved_params, dry_run=dry_run), timeout=task.timeout)
                 
                 db_task.status = "completed"
                 db_task.end_time = datetime.now(timezone.utc)

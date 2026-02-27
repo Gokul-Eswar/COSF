@@ -33,7 +33,7 @@ class BaseAdapter(ABC):
         return self._docker_client
 
     @abstractmethod
-    async def run(self, params: Dict[str, Any]) -> Union[TaskResult, List[Any], Dict[str, Any]]:
+    async def run(self, params: Dict[str, Any], dry_run: bool = False) -> Union[TaskResult, List[Any], Dict[str, Any]]:
         """Execute the adapter's task with provided parameters."""
         pass
 

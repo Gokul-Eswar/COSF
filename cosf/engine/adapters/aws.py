@@ -9,7 +9,7 @@ class AwsAdapter(BaseAdapter):
     ADAPTER_NAME = "aws"
     ADAPTER_DESCRIPTION = "Performs AWS infrastructure reconnaissance and security checks."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def run(self, params: Dict[str, Any], dry_run: bool = False) -> TaskResult:
         operation = params.get("operation")
         region = params.get("region", "us-east-1")
         

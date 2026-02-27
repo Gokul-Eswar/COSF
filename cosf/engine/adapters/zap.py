@@ -9,7 +9,7 @@ class ZapAdapter(BaseAdapter):
     ADAPTER_NAME = "zap"
     ADAPTER_DESCRIPTION = "Performs dynamic application security testing (DAST) using OWASP ZAP. Requires 'target' URL."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def run(self, params: Dict[str, Any], dry_run: bool = False) -> TaskResult:
         target = params.get("target")
         if not target:
             raise ValueError("Zap adapter requires a 'target' parameter (URL)")
