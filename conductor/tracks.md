@@ -53,3 +53,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [x] Track: Unified Web Dashboard & Visualization
 - [Folder](./tracks/web_dashboard/)
+
+---
+## [ ] Track: Centralized Normalization Pipeline (OCSF Layer)
+- [Folder](./tracks/normalization/)
+
+---
+## [ ] Track: Simulation & "Dry Run" Mode
+- [Folder](./tracks/simulation/)

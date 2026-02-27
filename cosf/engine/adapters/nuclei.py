@@ -2,6 +2,7 @@ import json
 from typing import Dict, Any, List, Union
 from cosf.engine.adapter import BaseAdapter, TaskResult
 from cosf.models.som import Vulnerability
+from cosf.engine.normalization import NormalizationEngine
 
 class NucleiAdapter(BaseAdapter):
     """Adapter for the Nuclei vulnerability scanner."""
@@ -22,31 +23,9 @@ class NucleiAdapter(BaseAdapter):
             f"-u {target} -json-export -"
         )
         
-        entities = self._parse_json(output)
+        entities = NormalizationEngine.normalize_output("nuclei", output)
         
         return TaskResult(
             entities=entities,
             raw_output=output
         )
-
-    def _parse_json(self, output: str) -> List[Vulnerability]:
-        vulnerabilities = []
-        # Nuclei outputs one JSON object per line
-        lines = output.strip().split("\n")
-        for line in lines:
-            if not line:
-                continue
-            try:
-                data = json.loads(line)
-                info = data.get("info", {})
-                vuln = Vulnerability(
-                    cve_id=data.get("template-id"),
-                    severity=info.get("severity", "unknown"),
-                    description=f"{info.get('name', 'Unknown')}: {data.get('matched-at', '')}",
-                    asset_id=data.get("ip", "unknown")
-                )
-                vulnerabilities.append(vuln)
-            except json.JSONDecodeError:
-                continue
-
-        return vulnerabilities

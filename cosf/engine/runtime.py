@@ -92,7 +92,7 @@ class ExecutionEngine:
         self.adapters = adapter_registry or AdapterRegistry()
         self.context: Dict[str, Any] = {}
 
-    async def run(self, workflow: WorkflowSchema):
+    async def run(self, workflow: WorkflowSchema, dry_run: bool = False):
         """Executes a complete security workflow with dependency resolution."""
         await init_db()
         self.context = {"tasks": {}}
@@ -103,7 +103,7 @@ class ExecutionEngine:
         
         async with AsyncSessionLocal() as session:
             db_exec = WorkflowExecution(
-                workflow_name=workflow.name,
+                workflow_name=f"{workflow.name} (Dry Run)" if dry_run else workflow.name,
                 status="running",
                 start_time=datetime.now(timezone.utc),
                 public_key=pub_key
@@ -113,6 +113,7 @@ class ExecutionEngine:
             await session.refresh(db_exec)
 
             print(f"Starting workflow: {workflow.name} (Execution ID: {db_exec.id})")
+            if dry_run: print("MODE: DRY RUN (Simulation only)")
             
             try:
                 executed_task_ids: Set[str] = set()
@@ -138,7 +139,7 @@ class ExecutionEngine:
                                 await self._record_skipped_task(task, db_exec.id, task_session)
                                 return task.id, "SKIPPED"
 
-                            result = await self.execute_task_in_context(task, db_exec.id, task_session, priv_key)
+                            result = await self.execute_task_in_context(task, db_exec.id, task_session, priv_key, dry_run=dry_run)
                             return task.id, result
 
                     task_results = await asyncio.gather(*(run_task_wrapper(t) for t in runnable_tasks))
@@ -200,7 +201,7 @@ class ExecutionEngine:
             return [self._resolve_variables(i) for i in params]
         return params
 
-    async def execute_task_in_context(self, task: WorkflowTask, execution_id: str, session: AsyncSession, private_key: str):
+    async def execute_task_in_context(self, task: WorkflowTask, execution_id: str, session: AsyncSession, private_key: str, dry_run: bool = False):
         """Executes a task with retries, timeouts, and variable resolution."""
         # Resolve variables in params
         resolved_params = self._resolve_variables(task.params)
@@ -226,6 +227,7 @@ class ExecutionEngine:
         await session.refresh(db_task)
 
         print(f"Executing task: {task.name} (ID: {task.id}) with adapter: {task.adapter}")
+        if dry_run: print(f"  [DRY RUN] Skipping real execution for {task.id}")
         
         last_error = None
         for attempt in range(task.retries + 1):
@@ -234,8 +236,17 @@ class ExecutionEngine:
             
             try:
                 adapter = self.adapters.get(task.adapter)
-                # Apply timeout
-                result = await asyncio.wait_for(adapter.run(resolved_params), timeout=task.timeout)
+                
+                if dry_run:
+                    # Simulation mode logic
+                    result = TaskResult(
+                        entities=[],
+                        outputs={"status": "simulated", "message": "Dry run successful"},
+                        raw_output="SIMULATED OUTPUT"
+                    )
+                else:
+                    # Apply timeout for real execution
+                    result = await asyncio.wait_for(adapter.run(resolved_params), timeout=task.timeout)
                 
                 db_task.status = "completed"
                 db_task.end_time = datetime.now(timezone.utc)
