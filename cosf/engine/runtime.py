@@ -93,6 +93,38 @@ class ExecutionEngine:
         self.adapters = adapter_registry or AdapterRegistry()
         self.context: Dict[str, Any] = {}
 
+    def generate_plan(self, workflow: WorkflowSchema) -> List[Dict[str, Any]]:
+        """Generates a structured execution plan without running the tasks."""
+        plan = []
+        executed_task_ids: Set[str] = set()
+        remaining_tasks = list(workflow.tasks)
+
+        while remaining_tasks:
+            runnable_tasks = [
+                t for t in remaining_tasks 
+                if all(dep in executed_task_ids for dep in t.depends_on)
+            ]
+
+            if not runnable_tasks and remaining_tasks:
+                break # Circular dependency
+
+            for task in runnable_tasks:
+                # Resolve variables as much as possible (some might be unresolved until runtime)
+                # But for the plan, we show them as they are or partially resolved
+                plan_item = {
+                    "id": task.id,
+                    "name": task.name,
+                    "adapter": task.adapter,
+                    "depends_on": task.depends_on,
+                    "params": task.params,
+                    "condition": task.when
+                }
+                plan.append(plan_item)
+                executed_task_ids.add(task.id)
+                remaining_tasks.remove(task)
+        
+        return plan
+
     async def run(self, workflow: WorkflowSchema, dry_run: bool = False):
         """Executes a complete security workflow with dependency resolution."""
         await init_db()

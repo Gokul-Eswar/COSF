@@ -53,7 +53,8 @@ def serve(
 @app.command(name="run")
 def run(
     workflow_file: str = typer.Argument(..., help="Path to the workflow YAML file"),
-    remote: Optional[str] = typer.Option(None, "--remote", "-r", help="URL of a remote COSF server to run the workflow on")
+    remote: Optional[str] = typer.Option(None, "--remote", "-r", help="URL of a remote COSF server to run the workflow on"),
+    dry_run: bool = typer.Option(False, "--dry-run", "-d", help="Run the workflow in simulation mode (dry run)")
 ):
     """Run a security workflow from a YAML file (Locally or Remotely)."""
     workflow_path = Path(workflow_file)
@@ -69,7 +70,7 @@ def run(
             typer.echo(f"Sending workflow to remote server: {remote}...")
             response = httpx.post(
                 f"{remote.rstrip('/')}/workflows/run",
-                json={"workflow_yaml": content},
+                json={"workflow_yaml": content, "dry_run": dry_run},
                 timeout=30.0
             )
             response.raise_for_status()
@@ -84,9 +85,21 @@ def run(
         raise typer.Exit(code=1)
 
     engine = get_engine()
+    
+    if dry_run:
+        typer.echo(f"MODE: DRY RUN (Simulation)")
+        plan = engine.generate_plan(workflow)
+        typer.echo("\n--- Execution Plan ---")
+        typer.echo(f"{'Step':<5} | {'ID':<15} | {'Adapter':<10} | {'Name':<25}")
+        typer.echo("-" * 65)
+        for i, task in enumerate(plan, 1):
+            typer.echo(f"{i:<5} | {task['id']:<15} | {task['adapter']:<10} | {task['name']:<25}")
+        typer.echo("----------------------\n")
+
     try:
-        asyncio.run(engine.run(workflow))
-        typer.echo(f"Workflow '{workflow.name}' completed successfully.")
+        asyncio.run(engine.run(workflow, dry_run=dry_run))
+        status_msg = "simulated successfully" if dry_run else "completed successfully"
+        typer.echo(f"Workflow '{workflow.name}' {status_msg}.")
     except Exception as e:
         typer.echo(f"Error: Workflow execution failed: {e}", err=True)
         raise typer.Exit(code=1)

@@ -25,6 +25,7 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 
 class WorkflowRunRequest(BaseModel):
     workflow_yaml: str
+    dry_run: bool = False
 
 class ExecutionStatus(BaseModel):
     id: str
@@ -38,12 +39,12 @@ def get_engine():
     load_adapters(registry)
     return ExecutionEngine(adapter_registry=registry)
 
-async def run_workflow_task(execution_id: str, workflow_yaml: str):
+async def run_workflow_task(execution_id: str, workflow_yaml: str, dry_run: bool = False):
     """Background task to execute a workflow."""
     parser = WorkflowParser()
     workflow = parser.parse(workflow_yaml)
     engine = get_engine()
-    await engine.run(workflow)
+    await engine.run(workflow, dry_run=dry_run)
 
 @app.on_event("startup")
 async def startup_event():
@@ -66,8 +67,8 @@ async def run_workflow(request: WorkflowRunRequest, background_tasks: Background
     """Triggers a security workflow execution in the background."""
     try:
         yaml.safe_load(request.workflow_yaml)
-        background_tasks.add_task(run_workflow_task, "pending", request.workflow_yaml)
-        return {"message": "Workflow execution triggered", "status": "accepted"}
+        background_tasks.add_task(run_workflow_task, "pending", request.workflow_yaml, dry_run=request.dry_run)
+        return {"message": f"Workflow execution triggered {'(DRY RUN)' if request.dry_run else ''}", "status": "accepted"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid workflow: {str(e)}")
 

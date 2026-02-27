@@ -12,14 +12,20 @@ class MockResponseGenerator:
         """Generates a TaskResult with mock entities based on the adapter."""
         target = params.get("target", "127.0.0.1")
         
+        # Ensure we have a valid mock IP for SOM Asset requirements
+        mock_ip = target
+        is_valid_ip = all(c in "0123456789.:abcdef" for c in target.lower()) and (target.count(".") == 3 or ":" in target)
+        if not is_valid_ip:
+            mock_ip = f"192.168.1.{random.randint(2, 254)}"
+
         entities: List[SOMBase] = []
         outputs: Dict[str, Any] = {"status": "simulated"}
 
         if adapter_name == "nmap":
             # Generate a mock Asset
             asset = Asset(
-                name=f"mock-host-{target.replace('.', '-')}",
-                ip_address=target if "." in target else "192.168.1.10",
+                name=f"mock-host-{target.replace('.', '-').replace(':', '-')}",
+                ip_address=mock_ip,
                 os=random.choice(["Linux 5.x", "Windows 10", "Ubuntu 22.04"]),
                 tags=["simulated", "nmap"]
             )
@@ -51,7 +57,7 @@ class MockResponseGenerator:
                     cve_id=cve,
                     severity=severity,
                     description=f"[SIMULATED] {desc} on {target}",
-                    asset_id=target # Simplification for simulation
+                    asset_id=mock_ip # Use mock_ip instead of raw target
                 ))
 
         elif adapter_name == "aws":

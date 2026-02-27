@@ -45,4 +45,4 @@ def test_cli_run_fails_with_invalid_yaml(tmp_path):
     
     result = runner.invoke(app, ["run", str(invalid_file)], catch_exceptions=False)
     assert result.exit_code != 0
-    assert "Error: Failed to parse workflow" in result.output
+    assert "Error: Failed to parse YAML" in result.output
