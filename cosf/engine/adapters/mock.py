@@ -7,7 +7,7 @@ class MockAdapter(BaseAdapter):
     
     ADAPTER_NAME = "mock"
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def _run(self, params: Dict[str, Any]) -> TaskResult:
         target = params.get("target", "127.0.0.1")
         
         asset = Asset(name=f"mock-{target}", ip_address=target)

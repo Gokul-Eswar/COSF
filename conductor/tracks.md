@@ -55,9 +55,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [Folder](./tracks/web_dashboard/)
 
 ---
-## [ ] Track: Centralized Normalization Pipeline (OCSF Layer)
+## [x] Track: Centralized Normalization Pipeline (OCSF Layer)
 - [Folder](./tracks/normalization/)
 
 ---
-## [ ] Track: Simulation & "Dry Run" Mode
+## [x] Track: Simulation & "Dry Run" Mode
 - [Folder](./tracks/simulation/)

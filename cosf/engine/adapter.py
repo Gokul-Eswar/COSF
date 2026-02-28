@@ -3,6 +3,7 @@ import docker
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List, Union
 from pydantic import BaseModel
+from cosf.engine.normalization import NormalizationEngine
 
 class TaskResult(BaseModel):
     """Encapsulates the result of a task execution."""
@@ -17,6 +18,9 @@ class BaseAdapter(ABC):
     Provides common utilities for logging, error handling, and Docker management.
     """
     
+    ADAPTER_NAME: str = "base"
+    ADAPTER_DESCRIPTION: str = "Base adapter"
+
     def __init__(self):
         self.logger = logging.getLogger(f"cosf.adapter.{self.__class__.__name__}")
         self._docker_client: Optional[docker.DockerClient] = None
@@ -32,10 +36,23 @@ class BaseAdapter(ABC):
                 raise RuntimeError("Docker is not available or accessible")
         return self._docker_client
 
-    @abstractmethod
     async def run(self, params: Dict[str, Any], dry_run: bool = False) -> Union[TaskResult, List[Any], Dict[str, Any]]:
-        """Execute the adapter's task with provided parameters."""
+        """Template method for running an adapter, handling dry-run logic."""
+        if dry_run:
+            from cosf.engine.simulation import MockResponseGenerator
+            self.logger.info(f"Running {self.ADAPTER_NAME} in DRY-RUN mode.")
+            return MockResponseGenerator.generate(self.ADAPTER_NAME, params)
+        
+        return await self._run(params)
+
+    @abstractmethod
+    async def _run(self, params: Dict[str, Any]) -> Union[TaskResult, List[Any], Dict[str, Any]]:
+        """Actual tool execution logic to be implemented by subclasses."""
         pass
+
+    def normalize(self, raw_output: str) -> List[Any]:
+        """Automatically normalizes raw tool output using the central engine."""
+        return NormalizationEngine.normalize_output(self.ADAPTER_NAME, raw_output)
 
     def run_container(self, image: str, command: str, **kwargs) -> str:
         """Helper to run a command in a Docker container and return output."""

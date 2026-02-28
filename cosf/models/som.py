@@ -17,6 +17,8 @@ class Service(SOMBase):
     port: int
     protocol: str
     name: Optional[str] = None
+    product: Optional[str] = None
+    version: Optional[str] = None
     state: Optional[str] = None
 
 class Vulnerability(SOMBase):

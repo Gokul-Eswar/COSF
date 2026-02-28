@@ -9,7 +9,7 @@ class PythonAdapter(BaseAdapter):
     ADAPTER_NAME = "python"
     ADAPTER_DESCRIPTION = "Runs a custom Python script. Requires 'script' (base64 encoded or raw string) and returns TaskResult compatible JSON."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def _run(self, params: Dict[str, Any]) -> TaskResult:
         script_content = params.get("script")
         if not script_content:
             raise ValueError("Python adapter requires a 'script' parameter")

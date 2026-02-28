@@ -41,6 +41,29 @@ def test_nuclei_normalization():
     assert vuln.cve_id == "test-vuln"
     assert "Test Vulnerability" in vuln.description
 
+def test_nmap_normalization_with_fingerprints():
+    mock_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <nmaprun>
+      <host>
+        <address addr="10.0.0.5" addrtype="ipv4"/>
+        <os><osmatch name="Linux 4.15 - 5.6" accuracy="100"/></os>
+        <ports>
+          <port protocol="tcp" portid="22">
+            <state state="open"/>
+            <service name="ssh" product="OpenSSH" version="8.2p1 Ubuntu 4ubuntu0.1 (Ubuntu Linux; protocol 2.0)"/>
+          </port>
+        </ports>
+      </host>
+    </nmaprun>"""
+    
+    entities = NormalizationEngine.normalize_output("nmap", mock_xml)
+    asset = next(e for e in entities if isinstance(e, Asset))
+    service = next(e for e in entities if isinstance(e, Service))
+    
+    assert asset.os == "Linux"
+    assert service.product == "OpenSSH"
+    assert service.version == "8.2p1 Ubuntu 4ubuntu0.1"
+
 def test_unsupported_tool():
     entities = NormalizationEngine.normalize_output("unknown_tool", "some output")
     assert entities == []

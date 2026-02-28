@@ -2,7 +2,6 @@ import xml.etree.ElementTree as ET
 from typing import Dict, Any, List, Union
 from cosf.engine.adapter import BaseAdapter, TaskResult
 from cosf.models.som import Asset, Service
-from cosf.engine.normalization import NormalizationEngine
 
 class NmapAdapter(BaseAdapter):
     """Adapter for the Nmap security scanner."""
@@ -10,7 +9,7 @@ class NmapAdapter(BaseAdapter):
     ADAPTER_NAME = "nmap"
     ADAPTER_DESCRIPTION = "Scans targets for open ports and services. Requires 'target' parameter (IP or hostname)."
 
-    async def run(self, params: Dict[str, Any], dry_run: bool = False) -> TaskResult:
+    async def _run(self, params: Dict[str, Any]) -> TaskResult:
         target = params.get("target")
         if not target:
             raise ValueError("Nmap adapter requires a 'target' parameter")
@@ -23,7 +22,7 @@ class NmapAdapter(BaseAdapter):
             f"-oX - {target}"
         )
         
-        entities = NormalizationEngine.normalize_output("nmap", xml_output)
+        entities = self.normalize(xml_output)
         
         # Capture the first IP found as an output for downstream tasks
         target_ip = target

@@ -99,6 +99,27 @@ class ReportingEngine:
         return str(output_file)
 
     def _generate_html(self, execution: WorkflowExecution, exec_dir: Path) -> str:
+        # Calculate normalization statistics
+        total_entities = 0
+        entity_counts = {"Asset": 0, "Service": 0, "Vulnerability": 0, "Other": 0}
+        
+        for task in execution.tasks:
+            if task.result_json:
+                # result_json can be a dict with "entities" key or a list directly
+                entities = []
+                if isinstance(task.result_json, dict) and "entities" in task.result_json:
+                    entities = task.result_json["entities"]
+                elif isinstance(task.result_json, list):
+                    entities = task.result_json
+                
+                total_entities += len(entities)
+                for e in entities:
+                    # Very basic heuristic to count types from JSON
+                    if "ip_address" in e: entity_counts["Asset"] += 1
+                    elif "port" in e: entity_counts["Service"] += 1
+                    elif "severity" in e: entity_counts["Vulnerability"] += 1
+                    else: entity_counts["Other"] += 1
+
         template_str = """
         <!DOCTYPE html>
         <html lang="en">
@@ -153,6 +174,34 @@ class ReportingEngine:
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                         <h3 class="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-2">Tasks Executed</h3>
                         <p class="text-xl font-bold">{{ execution.tasks | length }}</p>
+                    </div>
+                </section>
+
+                <!-- Normalization Quality Section -->
+                <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                    <div class="px-6 py-4 border-b border-gray-100 bg-indigo-50">
+                        <h2 class="text-lg font-bold text-indigo-900 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Normalization Quality Report
+                        </h2>
+                    </div>
+                    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs font-bold uppercase mb-1">Total SOM Objects</p>
+                            <p class="text-2xl font-black text-indigo-600">{{ total_entities }}</p>
+                        </div>
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs font-bold uppercase mb-1">Assets</p>
+                            <p class="text-2xl font-black">{{ entity_counts['Asset'] }}</p>
+                        </div>
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs font-bold uppercase mb-1">Services</p>
+                            <p class="text-2xl font-black">{{ entity_counts['Service'] }}</p>
+                        </div>
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs font-bold uppercase mb-1">Vulnerabilities</p>
+                            <p class="text-2xl font-black text-red-600">{{ entity_counts['Vulnerability'] }}</p>
+                        </div>
                     </div>
                 </section>
 
@@ -232,7 +281,11 @@ class ReportingEngine:
         </html>
         """
         template = Template(template_str)
-        html_content = template.render(execution=execution)
+        html_content = template.render(
+            execution=execution, 
+            total_entities=total_entities, 
+            entity_counts=entity_counts
+        )
         output_file = exec_dir / "dashboard.html"
         output_file.write_text(html_content)
         return str(output_file)

@@ -109,7 +109,8 @@ tasks:
                 </label>
                 <div class="flex justify-end space-x-3">
                     <button onclick="toggleModal('scan-modal')" class="px-4 py-2 text-slate-600 font-medium">Cancel</button>
-                    <button onclick="submitWorkflow()" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold shadow-md hover:bg-blue-700 transition-colors">Run Workflow</button>
+                    <button onclick="submitWorkflow(true)" class="bg-amber-500 text-white px-6 py-2 rounded-md font-bold shadow-md hover:bg-amber-600 transition-colors">Dry Run</button>
+                    <button onclick="submitWorkflow(false)" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold shadow-md hover:bg-blue-700 transition-colors">Run Workflow</button>
                 </div>
             </div>
         </div>
@@ -160,12 +161,12 @@ tasks:
             } catch (e) { console.error(e); }
         }
 
-        async function submitWorkflow() {
+        async function submitWorkflow(dryRun = false) {
             const yaml = document.getElementById('workflow-yaml').value;
             const res = await fetch(`${API_BASE}/workflows/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ workflow_yaml: yaml })
+                body: JSON.stringify({ workflow_yaml: yaml, dry_run: dryRun })
             });
             if (res.ok) { toggleModal('scan-modal'); refreshData(); }
         }

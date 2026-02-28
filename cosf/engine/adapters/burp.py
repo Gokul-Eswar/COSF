@@ -10,7 +10,7 @@ class BurpAdapter(BaseAdapter):
     ADAPTER_NAME = "burp"
     ADAPTER_DESCRIPTION = "Initiates and retrieves results from Burp Suite Professional/Enterprise scans."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def _run(self, params: Dict[str, Any]) -> TaskResult:
         api_url = params.get("api_url", "http://127.0.0.1:1337")
         api_key = params.get("api_key")
         target = params.get("target") # URL to scan

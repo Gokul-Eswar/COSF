@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Union, Optional
 import xml.etree.ElementTree as ET
 import json
+import re
 from cosf.models.som import Asset, Service, Vulnerability, SOMBase
 
 class SeverityMapper:
@@ -25,6 +26,33 @@ class SeverityMapper:
     @classmethod
     def normalize(cls, severity: str) -> str:
         return cls.MAPPING.get(severity.lower(), "Unknown")
+
+class FingerprintRule:
+    """Standardizes OS and service version strings."""
+    
+    @classmethod
+    def normalize_os(cls, raw_os: Optional[str]) -> Optional[str]:
+        if not raw_os: return None
+        # Example: "Linux 3.10 - 4.11" -> "Linux"
+        # Example: "Microsoft Windows 10 1709 - 1903" -> "Windows 10"
+        if "windows" in raw_os.lower():
+            if "10" in raw_os: return "Windows 10"
+            if "11" in raw_os: return "Windows 11"
+            if "2019" in raw_os: return "Windows Server 2019"
+            if "2016" in raw_os: return "Windows Server 2016"
+            return "Windows"
+        if "linux" in raw_os.lower():
+            if "ubuntu" in raw_os.lower(): return "Ubuntu Linux"
+            if "debian" in raw_os.lower(): return "Debian Linux"
+            if "centos" in raw_os.lower(): return "CentOS Linux"
+            return "Linux"
+        return raw_os
+
+    @classmethod
+    def normalize_version(cls, version: Optional[str]) -> Optional[str]:
+        if not version: return None
+        # Clean up common noise in version strings
+        return version.split(" (")[0].strip()
 
 class BaseNormalizer(ABC):
     """Base class for all tool-specific normalizers."""
@@ -58,9 +86,18 @@ class NmapNormalizer(BaseNormalizer):
                 if h_elem is not None:
                     hostname = h_elem.get("name")
             
+            # Extract OS information
+            os_name = None
+            os_elem = host.find("os")
+            if os_elem is not None:
+                os_match = os_elem.find("osmatch")
+                if os_match is not None:
+                    os_name = os_match.get("name")
+            
             asset = Asset(
                 name=hostname or ip_address,
                 ip_address=ip_address,
+                os=FingerprintRule.normalize_os(os_name),
                 tags=["nmap", "discovered"]
             )
             entities.append(asset)
@@ -72,14 +109,24 @@ class NmapNormalizer(BaseNormalizer):
                     protocol = port.get("protocol")
                     state_elem = port.find("state")
                     state = state_elem.get("state") if state_elem is not None else None
+                    
                     service_elem = port.find("service")
-                    service_name = service_elem.get("name") if service_elem is not None else None
+                    service_name = None
+                    product = None
+                    version = None
+                    
+                    if service_elem is not None:
+                        service_name = service_elem.get("name")
+                        product = service_elem.get("product")
+                        version = FingerprintRule.normalize_version(service_elem.get("version"))
                     
                     entities.append(Service(
                         asset_id=asset.id,
                         port=port_id,
                         protocol=protocol,
                         name=service_name,
+                        product=product,
+                        version=version,
                         state=state
                     ))
         return entities

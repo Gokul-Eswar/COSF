@@ -1,10 +1,12 @@
 import asyncio
 import re
+import os
 from datetime import datetime, timezone
 from typing import List, Any, Dict, Optional, Set
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
 from cosf.engine.adapter import AdapterRegistry, TaskResult
 from cosf.engine.simulation import MockResponseGenerator
+from cosf.engine.policy import PolicyEngine
 from cosf.models.database import (
     WorkflowExecution, TaskExecution, DBAsset, DBService, DBVulnerability,
     DBCredential, DBAttackStep, DBRelationship, DBEvidence
@@ -88,9 +90,10 @@ class ExecutionEngine:
     WorkflowSchema, supporting dependencies, variable passing, retries, and timeouts.
     """
 
-    def __init__(self, adapter_registry: AdapterRegistry = None):
+    def __init__(self, adapter_registry: AdapterRegistry = None, policy_engine: PolicyEngine = None):
         """Initializes the execution engine."""
         self.adapters = adapter_registry or AdapterRegistry()
+        self.policy = policy_engine or PolicyEngine()
         self.context: Dict[str, Any] = {}
 
     def generate_plan(self, workflow: WorkflowSchema) -> List[Dict[str, Any]]:
@@ -131,6 +134,16 @@ class ExecutionEngine:
         self.context = {"tasks": {}}
         evaluator = ConditionEvaluator(self.context)
         
+        # 1. Generate plan and check policies
+        plan = self.generate_plan(workflow)
+        violations = self.policy.check_plan(plan)
+        if violations:
+            msg = "Workflow stopped due to policy violations:\n"
+            for task_id, v_list in violations.items():
+                msg += f"  - Task {task_id}: {', '.join(v_list)}\n"
+            print(msg)
+            raise RuntimeError(msg)
+
         # Generate keys for this execution instance
         priv_key, pub_key = CryptoManager.generate_key_pair()
         
@@ -238,6 +251,11 @@ class ExecutionEngine:
         """Executes a task with retries, timeouts, and variable resolution."""
         # Resolve variables in params
         resolved_params = self._resolve_variables(task.params)
+        
+        # Secondary policy check (for dynamically resolved targets)
+        violations = self.policy.check_task(task.adapter, resolved_params)
+        if violations:
+            raise RuntimeError(f"Task {task.id} violated security policies after variable resolution: {', '.join(violations)}")
 
         # Inject cloud credentials from environment if available and not already set
         if task.adapter == "aws":
@@ -276,6 +294,10 @@ class ExecutionEngine:
                 else:
                     # Apply timeout for real execution
                     result = await asyncio.wait_for(adapter.run(resolved_params, dry_run=dry_run), timeout=task.timeout)
+                    
+                    # Automatic normalization if result has raw_output but no entities
+                    if isinstance(result, TaskResult) and not result.entities and result.raw_output:
+                        result.entities = adapter.normalize(result.raw_output)
                 
                 db_task.status = "completed"
                 db_task.end_time = datetime.now(timezone.utc)
@@ -341,6 +363,8 @@ class ExecutionEngine:
                 port=obj.port,
                 protocol=obj.protocol,
                 name=obj.name,
+                product=obj.product,
+                version=obj.version,
                 state=obj.state
             )
             await session.merge(db_service)

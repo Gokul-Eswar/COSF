@@ -16,7 +16,7 @@ class MetasploitAdapter(BaseAdapter):
     ADAPTER_NAME = "metasploit"
     ADAPTER_DESCRIPTION = "Executes Metasploit modules via MSFRPC."
 
-    async def run(self, params: Dict[str, Any]) -> TaskResult:
+    async def _run(self, params: Dict[str, Any]) -> TaskResult:
         if MsfRpcClient is None:
              raise RuntimeError("pymetasploit3 is not installed. Install it with 'pip install pymetasploit3'")
 

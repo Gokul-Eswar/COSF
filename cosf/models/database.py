@@ -55,6 +55,8 @@ class DBService(Base):
     port: Mapped[int] = mapped_column(Integer)
     protocol: Mapped[str] = mapped_column(String(20))
     name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    product: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    version: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     state: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
 class DBVulnerability(Base):
