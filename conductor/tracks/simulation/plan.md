@@ -13,12 +13,12 @@
 
 ## Phase 3: Web UI & API Support
 - [x] Add `dry_run` support to `WorkflowRunRequest` in the API.
-- [ ] Add a "Dry Run" button next to "Run Workflow" in the Command Center modal. (Frontend UI update pending)
+- [x] Add a "Dry Run" button next to "Run Workflow" in the Command Center modal.
 - [x] Implement API background tasks that respect the dry-run flag.
 - [x] **Verification:** Trigger a dry run via CLI or API and see "simulated" status in history.
 
 ## Phase 4: Safety Policy Enforcement
-- [ ] Implement a `PolicyEngine` that checks the plan against a set of constraints (e.g., time of day, restricted IPs).
-- [ ] Add a `safety_config.yaml` file to define these constraints.
-- [ ] Block execution if a policy violation is detected in dry-run or real mode.
-- [ ] **Verification:** Attempt to scan a "Blacklisted IP" and verify the engine prevents it.
+- [x] Implement a `PolicyEngine` that checks the plan against a set of constraints (e.g., time of day, restricted IPs).
+- [x] Add a `safety_config.yaml` file to define these constraints.
+- [x] Block execution if a policy violation is detected in dry-run or real mode.
+- [x] **Verification:** Attempt to scan a "Blacklisted IP" and verify the engine prevents it.

@@ -60,6 +60,25 @@ class MockResponseGenerator:
                     asset_id=mock_ip # Use mock_ip instead of raw target
                 ))
 
+        elif adapter_name == "mock":
+            # Generate generic mock entities
+            asset = Asset(
+                name=f"mock-host-{target}",
+                ip_address=mock_ip,
+                tags=["simulated", "mock"]
+            )
+            entities.append(asset)
+            outputs["target_ip"] = str(asset.ip_address)
+            outputs["ip"] = str(asset.ip_address) # Alias for common usage
+
+            entities.append(Service(
+                asset_id=asset.id,
+                port=80,
+                protocol="tcp",
+                name="http",
+                state="open"
+            ))
+
         elif adapter_name == "aws":
             # Generate mock AWS Assets
             for i in range(random.randint(1, 3)):

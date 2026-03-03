@@ -15,10 +15,10 @@
 
 ## Phase 3: Advanced Metadata Mapping
 - [x] Enhance normalizers to capture more tool-specific metadata into the `metadata` JSON field of SOM objects. (Initial implementation done)
-- [ ] Implement a `FingerprintRule` that standardizes OS and service version strings.
+- [x] Implement a `FingerprintRule` that standardizes OS and service version strings.
 - [x] **Verification:** Verify that `Asset` objects have rich, standardized tags after an Nmap/Nuclei run.
 
 ## Phase 4: Integration & Global Config
-- [ ] Update `BaseAdapter` to automatically invoke the `NormalizationEngine` if a normalizer is registered for the adapter name.
-- [ ] Add a "Normalization Quality" report to the dashboard summary.
-- [ ] **Verification:** Trigger a workflow via the Web UI and verify high-quality standardized data in the graph.
+- [x] Update `BaseAdapter` to automatically invoke the `NormalizationEngine` if a normalizer is registered for the adapter name.
+- [x] Add a "Normalization Quality" report to the dashboard summary.
+- [x] **Verification:** Trigger a workflow via the Web UI and verify high-quality standardized data in the graph.
