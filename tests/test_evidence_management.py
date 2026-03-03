@@ -11,7 +11,8 @@ def test_evidence_manager_store():
     if os.path.exists(storage):
         shutil.rmtree(storage)
     
-    manager = EvidenceManager(storage_path=storage)
+    from cosf.utils.storage import LocalStorageProvider
+    manager = EvidenceManager(storage=LocalStorageProvider(storage_path=storage))
     data = b"fake pcap data content"
     
     evidence = manager.store_artifact(

@@ -15,14 +15,14 @@ def complex_workflow(tmp_path):
                 "id": "scan",
                 "name": "Scan Network",
                 "adapter": "nmap",
-                "params": {"target": "127.0.0.1"}
+                "params": {"target": "8.8.8.8"}
             },
             {
                 "id": "vuln",
                 "name": "Vulnerability Scan",
                 "adapter": "nuclei",
                 "depends_on": ["scan"],
-                "params": {"target": "https://127.0.0.1"}
+                "params": {"target": "https://8.8.8.8"}
             }
         ]
     }

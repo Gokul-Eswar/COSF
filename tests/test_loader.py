@@ -8,6 +8,7 @@ def test_load_adapters_builtin():
     # Mocking importlib and pkgutil to simulate finding a module
     with patch("importlib.import_module") as mock_import:
         mock_module = MagicMock()
+        mock_module.__path__ = ["/fake/path"]
         mock_import.return_value = mock_module
         
         with patch("pkgutil.iter_modules") as mock_iter:
@@ -26,6 +27,10 @@ def test_load_adapters_builtin():
 
 def test_list_available_plugins():
     with patch("importlib.import_module") as mock_import:
+        mock_module = MagicMock()
+        mock_module.__path__ = ["/fake/path"]
+        mock_import.return_value = mock_module
+        
         with patch("pkgutil.iter_modules") as mock_iter:
             mock_iter.return_value = [(None, "nmap", False)]
             

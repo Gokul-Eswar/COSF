@@ -21,7 +21,9 @@ class NucleiAdapter(BaseAdapter):
             f"-u {target} -json-export -"
         )
         
-        # No explicit normalization here; ExecutionEngine handles it automatically
+        entities = self.normalize(output)
+        
         return TaskResult(
+            entities=entities,
             raw_output=output
         )

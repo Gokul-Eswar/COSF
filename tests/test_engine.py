@@ -6,7 +6,7 @@ from cosf.engine.adapter import BaseAdapter, AdapterRegistry
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
 
 class MockAdapter(BaseAdapter):
-    async def run(self, params: dict):
+    async def _run(self, params: dict):
         return {"result": "success"}
 
 @pytest.fixture

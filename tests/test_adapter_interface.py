@@ -3,7 +3,7 @@ from abc import ABC
 from cosf.engine.adapter import BaseAdapter, AdapterRegistry
 
 class MockAdapter(BaseAdapter):
-    async def run(self, params: dict):
+    async def _run(self, params: dict):
         return {"status": "ok", "params": params}
 
 @pytest.mark.asyncio

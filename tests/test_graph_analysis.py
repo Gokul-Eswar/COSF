@@ -14,7 +14,7 @@ async def test_graph_build_from_db(mock_session_local):
     # Mock database data
     mock_asset = DBAsset(id="asset-1", name="Test Asset", ip_address="192.168.1.1")
     mock_service = DBService(id="service-1", asset_id="asset-1", port=80, protocol="tcp", name="http")
-    mock_vuln = DBVulnerability(id="vuln-1", asset_id="asset-1", service_id="service-1", cve_id="CVE-2023-1234", severity="high")
+    mock_vuln = DBVulnerability(id="vuln-1", asset_id="asset-1", service_id="service-1", cve_id="CVE-2023-1234", severity="high", description="Test vulnerability")
     mock_rel = DBRelationship(id="rel-1", source_id="asset-1", target_id="asset-2", type="ACCESSIBLE_VIA")
     
     # Mock scalars().all() or iterating over the result

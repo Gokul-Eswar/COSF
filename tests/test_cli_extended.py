@@ -64,8 +64,7 @@ def test_cli_graph_visualize(mock_build):
 @patch("cosf.ai.engine.GenerativeEngine.generate_workflow", new_callable=AsyncMock)
 @patch("cosf.ai.engine.GenerativeEngine.validate_generated_yaml")
 def test_cli_generate(mock_validate, mock_generate):
-    mock_generate.return_value = "name: AI Workflow
-tasks: []"
+    mock_generate.return_value = "name: AI Workflow\ntasks: []"
     result = runner.invoke(app, ["generate", "Scan my network"])
     assert result.exit_code == 0
     assert "AI Workflow" in result.output
