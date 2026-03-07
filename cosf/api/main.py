@@ -34,10 +34,15 @@ class ExecutionStatus(BaseModel):
     start_time: str
     end_time: Optional[str] = None
 
+_engine_instance = None
+
 def get_engine():
-    registry = AdapterRegistry()
-    load_adapters(registry)
-    return ExecutionEngine(adapter_registry=registry)
+    global _engine_instance
+    if _engine_instance is None:
+        registry = AdapterRegistry()
+        load_adapters(registry)
+        _engine_instance = ExecutionEngine(adapter_registry=registry)
+    return _engine_instance
 
 async def run_workflow_task(execution_id: str, workflow_yaml: str, dry_run: bool = False):
     """Background task to execute a workflow."""

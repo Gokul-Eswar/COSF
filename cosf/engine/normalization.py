@@ -162,6 +162,11 @@ class NormalizationEngine:
     }
 
     @classmethod
+    def register_normalizer(cls, tool_name: str, normalizer: BaseNormalizer):
+        """Registers a new normalizer dynamically."""
+        cls._normalizers[tool_name.lower()] = normalizer
+
+    @classmethod
     def get_normalizer(cls, tool_name: str) -> Optional[BaseNormalizer]:
         return cls._normalizers.get(tool_name.lower())
 

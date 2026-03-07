@@ -15,6 +15,7 @@ from cosf.models.db_session import AsyncSessionLocal, init_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from cosf.models.som import Asset, Service, Vulnerability, Credential, AttackStep, Relationship, Evidence
 from cosf.utils.crypto import CryptoManager
+from cosf.utils.variables import resolve_variables
 
 class ConditionEvaluator:
     """Evaluates conditional 'when' expressions against the execution context."""
@@ -27,7 +28,9 @@ class ConditionEvaluator:
             return True
         
         # 1. Resolve variables first (e.g., {{ tasks.ID.outputs.KEY }})
-        resolved = self._resolve_variables(condition).strip()
+        resolved = resolve_variables(self.context, condition)
+        if isinstance(resolved, str):
+            resolved = resolved.strip()
         
         # 2. Basic expression parsing (for now supporting ==, !=, contains, in)
         try:
@@ -69,19 +72,6 @@ class ConditionEvaluator:
         if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
             return s[1:-1]
         return s
-
-    def _resolve_variables(self, expression: str) -> str:
-        """Recursively resolves {{ tasks.ID.outputs.KEY }} in expression."""
-        pattern = r"\{\{\s*tasks\.(\w+)\.outputs\.(\w+)\s*\}\}"
-        matches = re.findall(pattern, expression)
-        for task_id, key in matches:
-            val = self.context.get("tasks", {}).get(task_id, {}).get("outputs", {}).get(key)
-            if val is not None:
-                expression = expression.replace(f"{{{{ tasks.{task_id}.outputs.{key} }}}}", str(val))
-            else:
-                # If variable not found, replace with 'None' or empty to avoid parsing issues
-                expression = expression.replace(f"{{{{ tasks.{task_id}.outputs.{key} }}}}", "None")
-        return expression
 
 class ExecutionEngine:
     """The core engine for orchestrating and executing security workflows.
@@ -231,26 +221,10 @@ class ExecutionEngine:
         session.add(db_task)
         await session.commit()
 
-    def _resolve_variables(self, params: Any) -> Any:
-        """Recursively resolves {{ tasks.ID.outputs.KEY }} in params."""
-        if isinstance(params, str):
-            pattern = r"\{\{\s*tasks\.(\w+)\.outputs\.(\w+)\s*\}\}"
-            matches = re.findall(pattern, params)
-            for task_id, key in matches:
-                val = self.context.get("tasks", {}).get(task_id, {}).get("outputs", {}).get(key)
-                if val is not None:
-                    params = params.replace(f"{{{{ tasks.{task_id}.outputs.{key} }}}}", str(val))
-            return params
-        elif isinstance(params, dict):
-            return {k: self._resolve_variables(v) for k, v in params.items()}
-        elif isinstance(params, list):
-            return [self._resolve_variables(i) for i in params]
-        return params
-
     async def execute_task_in_context(self, task: WorkflowTask, execution_id: str, session: AsyncSession, private_key: str, dry_run: bool = False):
         """Executes a task with retries, timeouts, and variable resolution."""
         # Resolve variables in params
-        resolved_params = self._resolve_variables(task.params)
+        resolved_params = resolve_variables(self.context, task.params)
         
         # Secondary policy check (for dynamically resolved targets)
         violations = self.policy.check_task(task.adapter, resolved_params)
@@ -347,79 +321,40 @@ class ExecutionEngine:
 
     async def _persist_som_object(self, obj: Any, session: AsyncSession):
         """Persists a SOM object into the database."""
+        db_model_map = {
+            Asset: DBAsset,
+            Service: DBService,
+            Vulnerability: DBVulnerability,
+            Credential: DBCredential,
+            AttackStep: DBAttackStep,
+            Evidence: DBEvidence,
+            Relationship: DBRelationship
+        }
+        
+        db_class = db_model_map.get(type(obj))
+        if not db_class:
+            return
+
+        # Handle both Pydantic v1 dict() and v2 model_dump()
+        data = getattr(obj, "model_dump", getattr(obj, "dict", lambda: obj.__dict__))()
+        
+        # Apply specialized field mappings to bridge SOM and DB schemas
         if isinstance(obj, Asset):
-            db_asset = DBAsset(
-                id=obj.id,
-                name=obj.name,
-                ip_address=str(obj.ip_address),
-                os=obj.os,
-                tags={"tags": obj.tags}
-            )
-            await session.merge(db_asset)
-        elif isinstance(obj, Service):
-            db_service = DBService(
-                id=obj.id,
-                asset_id=obj.asset_id,
-                port=obj.port,
-                protocol=obj.protocol,
-                name=obj.name,
-                product=obj.product,
-                version=obj.version,
-                state=obj.state
-            )
-            await session.merge(db_service)
-        elif isinstance(obj, Vulnerability):
-            db_vuln = DBVulnerability(
-                id=obj.id,
-                asset_id=obj.asset_id,
-                cve_id=obj.cve_id,
-                severity=obj.severity,
-                description=obj.description,
-                remediation=obj.remediation,
-                service_id=obj.service_id
-            )
-            await session.merge(db_vuln)
-        elif isinstance(obj, Credential):
-            db_cred = DBCredential(
-                id=obj.id,
-                asset_id=obj.asset_id,
-                username=obj.username,
-                password=obj.password,
-                password_hash=obj.password_hash,
-                type=obj.type,
-                source_task_id=obj.source_task_id
-            )
-            await session.merge(db_cred)
+            data["ip_address"] = str(data.get("ip_address"))
+            data["tags"] = {"tags": data.get("tags", [])}
         elif isinstance(obj, AttackStep):
-            db_step = DBAttackStep(
-                id=obj.id,
-                name=obj.name,
-                description=obj.description,
-                technique_id=obj.technique_id,
-                status=obj.status,
-                evidence_ids={"ids": obj.evidence_ids}
-            )
-            await session.merge(db_step)
+            data["evidence_ids"] = {"ids": data.get("evidence_ids", [])}
         elif isinstance(obj, Evidence):
-            db_evidence = DBEvidence(
-                id=obj.id,
-                name=obj.name,
-                type=obj.type,
-                file_path=obj.file_path,
-                hash_sha256=obj.hash_sha256,
-                task_id=obj.task_id,
-                metadata_json=obj.metadata
-            )
-            await session.merge(db_evidence)
+            data["metadata_json"] = data.pop("metadata", {})
         elif isinstance(obj, Relationship):
-            db_rel = DBRelationship(
-                id=obj.id,
-                source_id=obj.source_id,
-                target_id=obj.target_id,
-                type=obj.type,
-                metadata_json=obj.metadata
-            )
-            await session.merge(db_rel)
+            data["metadata_json"] = data.pop("metadata", {})
+            
+        # Filter data to only include valid columns for the DB model
+        valid_keys = {c.name for c in db_class.__table__.columns}
+        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
+
+        db_obj = db_class(**filtered_data)
+        await session.merge(db_obj)
 
     async def execute_task(self, task: WorkflowTask) -> Any:
         """Legacy compatibility wrapper."""
