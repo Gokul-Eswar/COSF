@@ -10,8 +10,8 @@ restricted_ips:
 
 # Allowed time window for execution (local time)
 allowed_times:
-  start: "08:00"
-  end: "20:00"
+  start: "00:00"
+  end: "23:59"
 
 # Restricted adapters (e.g., destructive tools)
 restricted_adapters:

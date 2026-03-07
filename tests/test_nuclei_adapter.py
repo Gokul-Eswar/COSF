@@ -29,7 +29,7 @@ async def test_nuclei_adapter_parsing():
         assert len(vulnerabilities) == 1
         vuln = vulnerabilities[0]
         assert vuln.cve_id == "cve-2021-1234"
-        assert vuln.severity == "high"
+        assert vuln.severity == "High"
         assert "Test Vulnerability" in vuln.description
 
 @pytest.mark.asyncio

@@ -17,7 +17,7 @@ def test_load_adapters_builtin():
             # Simulate a class in the module
             class FakeAdapter(BaseAdapter):
                 ADAPTER_NAME = "fake"
-                async def run(self, params): return {}
+                async def _run(self, params): return {}
             
             with patch("inspect.getmembers") as mock_members:
                 mock_members.return_value = [("FakeAdapter", FakeAdapter)]
@@ -36,7 +36,7 @@ def test_list_available_plugins():
             
             class FakeAdapter(BaseAdapter):
                 ADAPTER_NAME = "fake"
-                async def run(self, params): return {}
+                async def _run(self, params): return {}
                 
             with patch("inspect.getmembers") as mock_members:
                 mock_members.return_value = [("FakeAdapter", FakeAdapter)]
