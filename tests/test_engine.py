@@ -28,8 +28,8 @@ async def test_engine_executes_tasks_sequentially(engine):
     await engine.run(workflow)
     
     assert adapter.run.call_count == 2
-    adapter.run.assert_any_call(task1.params)
-    adapter.run.assert_any_call(task2.params)
+    adapter.run.assert_any_call(task1.params, dry_run=False)
+    adapter.run.assert_any_call(task2.params, dry_run=False)
 
 @pytest.mark.asyncio
 async def test_engine_stops_on_failure(engine):
@@ -55,7 +55,7 @@ async def test_engine_executes_independent_tasks_in_parallel(engine):
     # Adapter that records when it starts and ends
     start_times = []
     
-    async def slow_run(params):
+    async def slow_run(params, **kwargs):
         start_times.append(asyncio.get_event_loop().time())
         await asyncio.sleep(0.1)
         return {"result": "success"}
