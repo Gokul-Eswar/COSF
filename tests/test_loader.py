@@ -19,13 +19,10 @@ def test_load_adapters_builtin():
                 ADAPTER_NAME = "fake"
                 async def _run(self, params): return {}
             
-            with patch("cosf.engine.loader.inspect") as mock_inspect:
-                import inspect
-                mock_inspect.isclass = inspect.isclass
-                mock_inspect.getmembers.return_value = [("FakeAdapter", FakeAdapter)]
-                
-                load_adapters(registry, package_name="cosf.engine.adapters")
-                assert "fake" in registry.list_adapters()
+            mock_module.FakeAdapter = FakeAdapter
+            
+            load_adapters(registry, package_name="cosf.engine.adapters")
+            assert "fake" in registry.list_adapters()
 
 def test_list_available_plugins():
     with patch("pkgutil.iter_modules") as mock_iter:
@@ -40,10 +37,7 @@ def test_list_available_plugins():
                 ADAPTER_NAME = "fake"
                 async def _run(self, params): return {}
                 
-            with patch("cosf.engine.loader.inspect") as mock_inspect:
-                import inspect
-                mock_inspect.isclass = inspect.isclass
-                mock_inspect.getmembers.return_value = [("FakeAdapter", FakeAdapter)]
-                
-                plugins = list_available_plugins(package_name="cosf.engine.adapters")
-                assert "fake" in plugins
+            mock_module.FakeAdapter = FakeAdapter
+            
+            plugins = list_available_plugins(package_name="cosf.engine.adapters")
+            assert "fake" in plugins

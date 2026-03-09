@@ -30,6 +30,7 @@ def test_condition_evaluator(condition, context, expected):
 async def test_execution_engine_skipping(mock_session_local, mock_init_db):
     # Setup mocks
     mock_session = AsyncMock()
+    mock_session.add = MagicMock()
     mock_session_local.return_value.__aenter__.return_value = mock_session
     
     # Mock engine's DB persisting methods to avoid model issues in mock
