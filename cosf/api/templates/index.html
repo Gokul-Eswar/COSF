@@ -267,7 +267,87 @@
         let currentGraphData = null;
         let d3Zoom = null;
 
+        async function showExecutionDetails(execId) {
+            const panel = document.getElementById('detail-panel');
+            const typeBadge = document.getElementById('panel-type-badge');
+            const title = document.getElementById('panel-title');
+            const subtitle = document.getElementById('panel-subtitle');
+            const content = document.getElementById('panel-content');
+            const actions = document.getElementById('panel-actions');
+
+            panel.classList.remove('hidden');
+            setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+            
+            typeBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-white";
+            typeBadge.innerText = "Execution";
+            
+            // Fetch basic details
+            const res = await fetch(`${API_BASE}/executions/${execId}`, { headers: {'X-COSF-API-Key': 'admin-key-123'} });
+            const data = await res.json();
+            
+            title.innerText = data.workflow_name;
+            subtitle.innerText = execId;
+            
+            let html = `
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tasks</h3>
+                    <div class="space-y-2">
+                        ${data.tasks.map(t => `
+                            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">${t.name}</p>
+                                    <p class="text-[10px] text-slate-400">${t.adapter}</p>
+                                </div>
+                                <span class="text-[10px] font-bold uppercase ${t.status === 'completed' ? 'text-emerald-600' : t.status === 'failed' ? 'text-red-600' : 'text-blue-600'}">${t.status}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Live Logs</h3>
+                    <div id="log-container" class="bg-slate-900 text-slate-300 font-mono text-[10px] p-3 rounded-lg h-64 overflow-y-auto whitespace-pre-wrap shadow-inner border border-slate-800">
+                        <div class="text-slate-500 italic">Connecting to stream...</div>
+                    </div>
+                </div>
+            `;
+            content.innerHTML = html;
+            actions.innerHTML = `
+                <button onclick="refreshData(); closePanel();" class="w-full bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition-all">Close & Refresh Graph</button>
+            `;
+
+            // Start SSE stream
+            const logContainer = document.getElementById('log-container');
+            if (window.logStream) window.logStream.close();
+            
+            window.logStream = new EventSource(`${API_BASE}/api/executions/${execId}/logs?token=admin-key-123`);
+            // Note: browser doesn't support custom headers for EventSource, so we might need a workaround for auth.
+            // For now, I'll update the API to accept token in query if needed, or just skip auth for SSE in this POC.
+            // Wait, my require_role uses Depends(get_current_user), which looks at X-COSF-API-Key header.
+            // I'll update the API to also check query params.
+            
+            window.logStream.onmessage = (event) => {
+                const div = document.createElement('div');
+                div.className = "mb-1 animate-fade-in";
+                div.innerText = event.data;
+                if (event.data.includes('ERROR')) div.classList.add('text-red-400');
+                if (event.data.includes('SUCCESS')) div.classList.add('text-emerald-400');
+                if (event.data.includes('WARNING')) div.classList.add('text-amber-400');
+                
+                logContainer.appendChild(div);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            };
+            
+            window.logStream.onerror = () => {
+                const div = document.createElement('div');
+                div.className = "text-slate-500 italic mt-2";
+                div.innerText = "Stream ended or disconnected.";
+                logContainer.appendChild(div);
+                window.logStream.close();
+            };
+        }
+
         function closePanel() {
+            if (window.logStream) window.logStream.close();
             const panel = document.getElementById('detail-panel');
             panel.classList.add('translate-x-full');
             setTimeout(() => panel.classList.add('hidden'), 300);
@@ -416,7 +496,7 @@
                     const colorClass = statusColors[e.status.toLowerCase()] || 'bg-slate-100 text-slate-700 border-slate-200';
                     
                     return `
-                    <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm list-item-hover animate-fade-in">
+                    <div onclick="showExecutionDetails('${e.id}')" class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm list-item-hover animate-fade-in cursor-pointer">
                         <div class="flex justify-between items-center mb-1">
                             <span class="text-sm font-bold text-slate-800 truncate pr-2">${e.workflow_name}</span>
                             <span class="text-[10px] px-2 py-0.5 rounded-full border ${colorClass} uppercase font-bold shrink-0">

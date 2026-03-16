@@ -79,6 +79,9 @@ class ExecutionEngine:
     The ExecutionEngine manages the execution of tasks defined in a
     WorkflowSchema, supporting dependencies, variable passing, retries, and timeouts.
     """
+    
+    # Global log stream registry
+    _log_queues: Dict[str, List[asyncio.Queue]] = {}
 
     def __init__(self, adapter_registry: AdapterRegistry = None, policy_engine: PolicyEngine = None, max_concurrency: int = 5):
         """Initializes the execution engine."""
@@ -86,6 +89,30 @@ class ExecutionEngine:
         self.policy = policy_engine or PolicyEngine()
         self.context: Dict[str, Any] = {}
         self.semaphore = asyncio.Semaphore(max_concurrency)
+
+    @classmethod
+    def subscribe_logs(cls, execution_id: str) -> asyncio.Queue:
+        queue = asyncio.Queue()
+        if execution_id not in cls._log_queues:
+            cls._log_queues[execution_id] = []
+        cls._log_queues[execution_id].append(queue)
+        return queue
+
+    @classmethod
+    def unsubscribe_logs(cls, execution_id: str, queue: asyncio.Queue):
+        if execution_id in cls._log_queues:
+            cls._log_queues[execution_id].remove(queue)
+            if not cls._log_queues[execution_id]:
+                del cls._log_queues[execution_id]
+
+    def log(self, execution_id: str, message: str, level: str = "info"):
+        """Broadcasts a log message to all subscribers for an execution."""
+        full_msg = f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] {level.upper()}: {message}"
+        queues = self._log_queues.get(execution_id, [])
+        for q in queues:
+            q.put_nowait(full_msg)
+        # Also print to stdout for legacy/cli
+        print(full_msg)
 
     def generate_plan(self, workflow: WorkflowSchema) -> List[Dict[str, Any]]:
         """Generates a structured execution plan without running the tasks."""
@@ -149,8 +176,8 @@ class ExecutionEngine:
             await session.commit()
             await session.refresh(db_exec)
 
-            print(f"Starting workflow: {workflow.name} (Execution ID: {db_exec.id})")
-            if dry_run: print("MODE: DRY RUN (Simulation only)")
+            self.log(db_exec.id, f"Starting workflow: {workflow.name} (Execution ID: {db_exec.id})")
+            if dry_run: self.log(db_exec.id, "MODE: DRY RUN (Simulation only)", level="warning")
             
             try:
                 executed_task_ids: Set[str] = set()
@@ -174,7 +201,7 @@ class ExecutionEngine:
                             async with AsyncSessionLocal() as task_session:
                                 # Evaluate condition before execution
                                 if not evaluator.evaluate(task.when):
-                                    print(f"Skipping task: {task.name} (ID: {task.id}) - condition '{task.when}' not met.")
+                                    self.log(db_exec.id, f"Skipping task: {task.name} (ID: {task.id}) - condition '{task.when}' not met.")
                                     await self._record_skipped_task(task, db_exec.id, task_session)
                                     return task.id, "SKIPPED"
 
@@ -254,13 +281,13 @@ class ExecutionEngine:
         await session.commit()
         await session.refresh(db_task)
 
-        print(f"Executing task: {task.name} (ID: {task.id}) with adapter: {task.adapter}")
-        if dry_run: print(f"  [DRY RUN] Skipping real execution for {task.id}")
+        self.log(execution_id, f"Executing task: {task.name} (ID: {task.id}) with adapter: {task.adapter}")
+        if dry_run: self.log(execution_id, f"  [DRY RUN] Skipping real execution for {task.id}", level="warning")
         
         last_error = None
         for attempt in range(task.retries + 1):
             if attempt > 0:
-                print(f"Retrying task {task.id} (Attempt {attempt}/{task.retries})...")
+                self.log(execution_id, f"Retrying task {task.id} (Attempt {attempt}/{task.retries})...", level="warning")
             
             try:
                 adapter = self.adapters.get(task.adapter)
@@ -278,6 +305,8 @@ class ExecutionEngine:
                 
                 db_task.status = "completed"
                 db_task.end_time = datetime.now(timezone.utc)
+                
+                self.log(execution_id, f"Task {task.id} completed successfully.", level="success")
                 
                 entities = []
                 if isinstance(result, TaskResult):
@@ -302,10 +331,10 @@ class ExecutionEngine:
 
             except asyncio.TimeoutError:
                 last_error = f"Task timed out after {task.timeout}s"
-                print(f"Error: {last_error}")
+                self.log(execution_id, f"Error: {last_error}", level="error")
             except Exception as e:
                 last_error = str(e)
-                print(f"Error executing task: {last_error}")
+                self.log(execution_id, f"Error executing task: {last_error}", level="error")
             
             if attempt < task.retries:
                 await asyncio.sleep(2 ** attempt) # Exponential backoff

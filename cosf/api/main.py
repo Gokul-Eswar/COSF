@@ -1,7 +1,29 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Depends, Security
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
+import asyncio
+
+# ... existing imports ...
+
+@app.get("/api/executions/{execution_id}/logs")
+async def stream_execution_logs(execution_id: str, user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))):
+    """Streams real-time execution logs via SSE."""
+    from cosf.engine.runtime import ExecutionEngine
+    
+    async def log_generator():
+        queue = ExecutionEngine.subscribe_logs(execution_id)
+        try:
+            while True:
+                log_msg = await queue.get()
+                yield f"data: {log_msg}\n\n"
+                # Check if execution finished to close stream? 
+                # For now, we rely on the client closing it or the queue being deleted.
+        except asyncio.CancelledError:
+            ExecutionEngine.unsubscribe_logs(execution_id, queue)
+            raise
+
+    return StreamingResponse(log_generator(), media_type="text/event-stream")
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import asyncio
@@ -31,10 +53,14 @@ USER_DATABASE = {
     "readonly-key-789": {"name": "Auditor User", "role": "readonly"}
 }
 
-async def get_current_user(api_key: str = Security(api_key_header)):
-    if not api_key:
+async def get_current_user(
+    api_key: str = Security(api_key_header),
+    token: Optional[str] = None
+):
+    actual_key = api_key or token
+    if not actual_key:
         raise HTTPException(status_code=401, detail="API Key missing")
-    user = USER_DATABASE.get(api_key)
+    user = USER_DATABASE.get(actual_key)
     if not user:
         raise HTTPException(status_code=403, detail="Invalid API Key")
     return user
