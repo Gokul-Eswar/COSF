@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Union, Optional
 import xml.etree.ElementTree as ET
 import json
 import re
-from cosf.models.som import Asset, Service, Vulnerability, SOMBase
+from cosf.models.som import Asset, Service, Vulnerability, SOMBase, Evidence
 
 class SeverityMapper:
     """Unifies severity levels across different security tools."""
@@ -20,12 +20,30 @@ class SeverityMapper:
         "fatal": "Critical",
         "error": "High",
         "warning": "Medium",
-        "note": "Low"
+        "note": "Low",
+        # ZAP specific
+        "informational": "Info"
     }
 
     @classmethod
     def normalize(cls, severity: str) -> str:
-        return cls.MAPPING.get(severity.lower(), "Unknown")
+        if not severity: return "Unknown"
+        # Handle formats like "3 (High)" or "High (3)" from ZAP
+        clean_severity = severity.lower()
+        
+        # Check for direct keywords first
+        for key in cls.MAPPING.keys():
+            if key in clean_severity:
+                return cls.MAPPING[key]
+        
+        if "(" in clean_severity:
+            match = re.search(r"\((.*?)\)", clean_severity)
+            if match:
+                clean_severity = match.group(1).strip()
+                if clean_severity in cls.MAPPING:
+                    return cls.MAPPING[clean_severity]
+        
+        return cls.MAPPING.get(clean_severity, "Unknown")
 
 class FingerprintRule:
     """Standardizes OS and service version strings."""
@@ -35,17 +53,21 @@ class FingerprintRule:
         if not raw_os: return None
         # Example: "Linux 3.10 - 4.11" -> "Linux"
         # Example: "Microsoft Windows 10 1709 - 1903" -> "Windows 10"
-        if "windows" in raw_os.lower():
-            if "10" in raw_os: return "Windows 10"
-            if "11" in raw_os: return "Windows 11"
-            if "2019" in raw_os: return "Windows Server 2019"
-            if "2016" in raw_os: return "Windows Server 2016"
+        low_os = raw_os.lower()
+        if "windows" in low_os:
+            if "11" in low_os: return "Windows 11"
+            if "10" in low_os: return "Windows 10"
+            if "2019" in low_os: return "Windows Server 2019"
+            if "2016" in low_os: return "Windows Server 2016"
             return "Windows"
-        if "linux" in raw_os.lower():
-            if "ubuntu" in raw_os.lower(): return "Ubuntu Linux"
-            if "debian" in raw_os.lower(): return "Debian Linux"
-            if "centos" in raw_os.lower(): return "CentOS Linux"
+        if "linux" in low_os:
+            if "amazon" in low_os or "amzn" in low_os: return "Amazon Linux"
+            if "ubuntu" in low_os: return "Ubuntu Linux"
+            if "debian" in low_os: return "Debian Linux"
+            if "centos" in low_os: return "CentOS Linux"
             return "Linux"
+        if "macos" in low_os or "darwin" in low_os:
+            return "macOS"
         return raw_os
 
     @classmethod
@@ -132,33 +154,138 @@ class NmapNormalizer(BaseNormalizer):
         return entities
 
 class NucleiNormalizer(BaseNormalizer):
-    """Normalizes Nuclei JSON output into Vulnerability entities."""
+    """Normalizes Nuclei JSON output into Vulnerability entities with Evidence mapping."""
     
     def normalize(self, raw_output: str) -> List[SOMBase]:
-        vulnerabilities = []
+        entities = []
         lines = raw_output.strip().split("\n")
+        import hashlib
         for line in lines:
             if not line: continue
             try:
                 data = json.loads(line)
                 info = data.get("info", {})
+                
+                # Create Evidence for this finding
+                evidence = Evidence(
+                    name=f"Nuclei finding: {data.get('template-id')}",
+                    type="log",
+                    file_path="", # In-memory evidence from raw tool log line
+                    hash_sha256=hashlib.sha256(line.encode()).hexdigest(),
+                    metadata={"raw_line": data}
+                )
+                entities.append(evidence)
+
                 vuln = Vulnerability(
                     cve_id=data.get("template-id"),
                     severity=SeverityMapper.normalize(info.get("severity", "unknown")),
                     description=f"{info.get('name', 'Unknown')}: {data.get('matched-at', '')}",
                     asset_id=data.get("ip", "unknown")
                 )
-                vulnerabilities.append(vuln)
+                # Link Evidence to Vulnerability SOM is missing evidence_ids but database model has it.
+                # Actually, SOM AttackStep has evidence_ids. We'll use metadata for now or update SOM.
+                # For this track, we'll store it as a related entity.
+                entities.append(vuln)
             except json.JSONDecodeError:
                 continue
+        return entities
+
+class ZapNormalizer(BaseNormalizer):
+    """Normalizes OWASP ZAP JSON output into Vulnerability entities with Evidence mapping."""
+    
+    def normalize(self, raw_output: str) -> List[SOMBase]:
+        entities = []
+        import hashlib
+        try:
+            start = raw_output.find('{')
+            end = raw_output.rfind('}') + 1
+            if start == -1 or end == 0: return []
+            
+            data = json.loads(raw_output[start:end])
+            site_data = data.get("site", [])
+            if isinstance(site_data, dict): site_data = [site_data]
+
+            for site in site_data:
+                host = site.get("@host")
+                alerts = site.get("alerts", [])
+                for alert in alerts:
+                    # Create Evidence for each alert
+                    evidence = Evidence(
+                        name=f"ZAP Alert: {alert.get('name')}",
+                        type="log",
+                        file_path="",
+                        hash_sha256=hashlib.sha256(json.dumps(alert).encode()).hexdigest(),
+                        metadata={"alert_data": alert}
+                    )
+                    entities.append(evidence)
+
+                    vuln = Vulnerability(
+                        cve_id=alert.get("pluginid"),
+                        severity=SeverityMapper.normalize(alert.get("riskdesc", "unknown")),
+                        description=f"{alert.get('name')}: {alert.get('desc')}",
+                        asset_id=host or "unknown"
+                    )
+                    entities.append(vuln)
+        except Exception:
+            pass
+        return entities
+
+class BurpNormalizer(BaseNormalizer):
+    """Normalizes Burp Suite REST API findings."""
+    
+    def normalize(self, raw_output: str) -> List[SOMBase]:
+        vulnerabilities = []
+        try:
+            data = json.loads(raw_output)
+            issues = []
+            if isinstance(data, list):
+                issues = data
+            elif isinstance(data, dict):
+                issues = data.get("issue_events", []) or data.get("issues", [])
+                if not issues and "severity" in data:
+                    issues = [data]
+
+            for issue in issues:
+                severity = issue.get("severity") or issue.get("risk")
+                vuln = Vulnerability(
+                    cve_id=str(issue.get("issue_type_id", "")),
+                    severity=SeverityMapper.normalize(severity),
+                    description=f"{issue.get('name', 'Unknown')}: {issue.get('description', 'No description')}",
+                    asset_id=issue.get("host") or "unknown"
+                )
+                vulnerabilities.append(vuln)
+        except Exception:
+            pass
         return vulnerabilities
+
+class MetasploitNormalizer(BaseNormalizer):
+    """Normalizes Metasploit execution results into AttackStep entities."""
+    
+    def normalize(self, raw_output: str) -> List[SOMBase]:
+        from cosf.models.som import AttackStep
+        entities = []
+        try:
+            if raw_output.startswith("{"):
+                data = json.loads(raw_output.replace("'", "\""))
+                if "job_id" in data or "uuid" in data:
+                    entities.append(AttackStep(
+                        name="Metasploit Execution",
+                        description=f"Job {data.get('job_id')} (UUID: {data.get('uuid')}) initiated.",
+                        status="attempted"
+                    ))
+        except Exception:
+            pass
+        return entities
 
 class NormalizationEngine:
     """Registry and orchestrator for data normalizers."""
     
     _normalizers: Dict[str, BaseNormalizer] = {
         "nmap": NmapNormalizer(),
-        "nuclei": NucleiNormalizer()
+        "nuclei": NucleiNormalizer(),
+        "zap": ZapNormalizer(),
+        "burp": BurpNormalizer(),
+        "metasploit": MetasploitNormalizer()
     }
 
     @classmethod
@@ -176,3 +303,5 @@ class NormalizationEngine:
         if not normalizer:
             return []
         return normalizer.normalize(raw_output)
+
+

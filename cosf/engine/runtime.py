@@ -80,11 +80,12 @@ class ExecutionEngine:
     WorkflowSchema, supporting dependencies, variable passing, retries, and timeouts.
     """
 
-    def __init__(self, adapter_registry: AdapterRegistry = None, policy_engine: PolicyEngine = None):
+    def __init__(self, adapter_registry: AdapterRegistry = None, policy_engine: PolicyEngine = None, max_concurrency: int = 5):
         """Initializes the execution engine."""
         self.adapters = adapter_registry or AdapterRegistry()
         self.policy = policy_engine or PolicyEngine()
         self.context: Dict[str, Any] = {}
+        self.semaphore = asyncio.Semaphore(max_concurrency)
 
     def generate_plan(self, workflow: WorkflowSchema) -> List[Dict[str, Any]]:
         """Generates a structured execution plan without running the tasks."""
@@ -167,16 +168,18 @@ class ExecutionEngine:
 
                     # Execute runnable tasks in parallel
                     async def run_task_wrapper(task):
-                        # Use a separate session for each parallel task to avoid session conflicts
-                        async with AsyncSessionLocal() as task_session:
-                            # Evaluate condition before execution
-                            if not evaluator.evaluate(task.when):
-                                print(f"Skipping task: {task.name} (ID: {task.id}) - condition '{task.when}' not met.")
-                                await self._record_skipped_task(task, db_exec.id, task_session)
-                                return task.id, "SKIPPED"
+                        # Apply concurrency limit via semaphore
+                        async with self.semaphore:
+                            # Use a separate session for each parallel task to avoid session conflicts
+                            async with AsyncSessionLocal() as task_session:
+                                # Evaluate condition before execution
+                                if not evaluator.evaluate(task.when):
+                                    print(f"Skipping task: {task.name} (ID: {task.id}) - condition '{task.when}' not met.")
+                                    await self._record_skipped_task(task, db_exec.id, task_session)
+                                    return task.id, "SKIPPED"
 
-                            result = await self.execute_task_in_context(task, db_exec.id, task_session, priv_key, dry_run=dry_run)
-                            return task.id, result
+                                result = await self.execute_task_in_context(task, db_exec.id, task_session, priv_key, dry_run=dry_run)
+                                return task.id, result
 
                     task_results = await asyncio.gather(*(run_task_wrapper(t) for t in runnable_tasks))
 

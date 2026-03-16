@@ -10,6 +10,7 @@
         .node { stroke: #fff; stroke-width: 1.5px; }
         .link { stroke: #94a3b8; stroke-opacity: 0.4; stroke-width: 1.5px; }
         .link.inferred { stroke-dasharray: 5,5; stroke: #fbbf24; stroke-opacity: 0.8; }
+        .link.critical { stroke: #ef4444; stroke-opacity: 1; stroke-width: 3px; }
         #graph-container { background-color: #f8fafc; cursor: grab; }
         #graph-container:active { cursor: grabbing; }
         .node-label { font-size: 10px; font-weight: 600; pointer-events: none; fill: #475569; }
@@ -27,10 +28,13 @@
             <h1 class="text-xl font-bold tracking-tight">COSF <span class="text-slate-400 font-normal">Command Center</span></h1>
         </div>
         <div class="flex items-center space-x-4">
+            <button id="trigger-analysis-btn" onclick="runAnalysis()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
+                Run Analysis
+            </button>
             <button id="trigger-scan-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
                 New Scan
             </button>
-            <span class="text-slate-400">v0.1.0</span>
+            <span class="text-slate-400">v0.2.0</span>
         </div>
     </nav>
 
@@ -49,6 +53,14 @@
                         <p class="text-2xl font-bold text-red-600" id="stat-vulns">0</p>
                         <p class="text-xs text-slate-500">Vulns</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Critical Paths -->
+            <div>
+                <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 text-indigo-600">Discovered Attack Paths</h2>
+                <div id="critical-paths-list" class="space-y-3">
+                    <p class="text-sm text-slate-400 italic">No paths analyzed yet.</p>
                 </div>
             </div>
 
@@ -118,6 +130,7 @@ tasks:
 
     <script>
         const API_BASE = "";
+        let currentGraphData = null;
 
         function toggleModal(id) {
             document.getElementById(id).classList.toggle('hidden');
@@ -127,7 +140,7 @@ tasks:
 
         async function fetchExecutions() {
             try {
-                const res = await fetch(`${API_BASE}/executions`);
+                const res = await fetch(`${API_BASE}/executions`, { headers: {'X-COSF-API-Key': 'admin-key-123'} });
                 const data = await res.json();
                 document.getElementById('execution-list').innerHTML = data.slice(0, 10).map(e => `
                     <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
@@ -145,7 +158,7 @@ tasks:
 
         async function fetchAssets() {
             try {
-                const res = await fetch(`${API_BASE}/assets`);
+                const res = await fetch(`${API_BASE}/assets`, { headers: {'X-COSF-API-Key': 'admin-key-123'} });
                 const data = await res.json();
                 const highRisk = data.filter(a => a.risk_score > 5.0);
                 document.getElementById('high-risk-list').innerHTML = highRisk.length === 0 ? 
@@ -161,12 +174,61 @@ tasks:
             } catch (e) { console.error(e); }
         }
 
+        async function runAnalysis() {
+            try {
+                const res = await fetch(`${API_BASE}/api/analysis/critical-paths`, { method: 'POST', headers: {'X-COSF-API-Key': 'admin-key-123'} });
+                const paths = await res.json();
+                
+                document.getElementById('critical-paths-list').innerHTML = paths.length === 0 ?
+                    '<p class="text-sm text-slate-400 italic">No critical paths discovered.</p>' :
+                    paths.map((p, idx) => `
+                        <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-100 border-l-4 border-l-indigo-500">
+                            <p class="text-xs font-bold text-indigo-800 mb-2">CRITICAL PATH #${idx+1}</p>
+                            <p class="text-[10px] text-slate-600 mb-3">${p.path.join(' ➔ ')}</p>
+                            <button onclick='validatePath(${JSON.stringify(p.path)})' class="w-full bg-indigo-600 text-white py-1.5 rounded text-[10px] font-bold hover:bg-indigo-700 transition-colors">
+                                VALIDATE ATTACK PATH
+                            </button>
+                        </div>
+                    `).join('');
+                
+                // Highlight paths in graph
+                highlightPaths(paths);
+            } catch (e) { console.error(e); }
+        }
+
+        async function validatePath(path) {
+            if (!confirm("This will launch an autonomous validation workflow. Proceed?")) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/analysis/validate-path`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-COSF-API-Key': 'admin-key-123' },
+                    body: JSON.stringify({ path: path })
+                });
+                if (res.ok) { 
+                    alert("Validation workflow triggered!");
+                    refreshData();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function highlightPaths(paths) {
+            d3.selectAll(".link").classed("critical", false);
+            paths.forEach(p => {
+                for (let i = 0; i < p.path.length - 1; i++) {
+                    const u = p.path[i], v = p.path[i+1];
+                    d3.selectAll(".link")
+                        .filter(d => (d.source.id === u && d.target.id === v) || (d.source.id === v && d.target.id === u))
+                        .classed("critical", true);
+                }
+            });
+        }
+
         async function submitWorkflow(dryRun = false) {
-            const yaml = document.getElementById('workflow-yaml').value;
+            const yamlText = document.getElementById('workflow-yaml').value;
             const res = await fetch(`${API_BASE}/workflows/run`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ workflow_yaml: yaml, dry_run: dryRun })
+                headers: { 'Content-Type': 'application/json', 'X-COSF-API-Key': 'admin-key-123' },
+                body: JSON.stringify({ workflow_yaml: yamlText, dry_run: dryRun })
             });
             if (res.ok) { toggleModal('scan-modal'); refreshData(); }
         }
@@ -176,8 +238,9 @@ tasks:
         async function refreshData() {
             fetchExecutions();
             fetchAssets();
-            const res = await fetch(`${API_BASE}/graph`);
+            const res = await fetch(`${API_BASE}/graph`, { headers: {'X-COSF-API-Key': 'admin-key-123'} });
             const data = await res.json();
+            currentGraphData = data;
             
             document.getElementById('stat-assets').innerText = data.nodes.filter(n => n.type === 'asset').length;
             document.getElementById('stat-vulns').innerText = data.nodes.filter(n => n.type === 'vulnerability').length;
@@ -195,8 +258,8 @@ tasks:
             container = svg.append("g");
 
             simulation = d3.forceSimulation(data.nodes)
-                .force("link", d3.forceLink(data.links).id(d => d.id).distance(80))
-                .force("charge", d3.forceManyBody().strength(-200))
+                .force("link", d3.forceLink(data.links).id(d => d.id).distance(100))
+                .force("charge", d3.forceManyBody().strength(-300))
                 .force("center", d3.forceCenter(width / 2, height / 2));
 
             const link = container.append("g").selectAll("line").data(data.links).join("line")
@@ -205,11 +268,11 @@ tasks:
             const node = container.append("g").selectAll("g").data(data.nodes).join("g")
                 .call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended));
 
-            node.append("circle").attr("r", d => d.type === 'asset' ? 10 : 6)
-                .attr("fill", d => ({asset: "#3b82f6", service: "#10b981", vulnerability: "#ef4444"}[d.type] || "#94a3b8"))
+            node.append("circle").attr("r", d => d.type === 'asset' ? 12 : 8)
+                .attr("fill", d => ({asset: "#3b82f6", service: "#10b981", vulnerability: "#ef4444", source: "#1e293b"}[d.type] || "#94a3b8"))
                 .attr("class", "node");
 
-            node.append("text").attr("class", "node-label").attr("dy", 20).attr("text-anchor", "middle")
+            node.append("text").attr("class", "node-label").attr("dy", 24).attr("text-anchor", "middle")
                 .text(d => d.label || d.id);
 
             simulation.on("tick", () => {

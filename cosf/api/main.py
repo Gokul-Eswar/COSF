@@ -1,4 +1,5 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Depends, Security
+from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from typing import List, Optional, Dict, Any
@@ -16,8 +17,36 @@ from cosf.models.db_session import AsyncSessionLocal, init_db
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from cosf.engine.graph import GraphEngine
+from cosf.engine.intelligence import InferenceEngine
 
-app = FastAPI(title="COSF Control Plane API", version="0.1.0")
+app = FastAPI(title="COSF Control Plane API", version="0.2.0")
+
+# --- Authentication & RBAC ---
+API_KEY_NAME = "X-COSF-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+USER_DATABASE = {
+    "admin-key-123": {"name": "Admin User", "role": "admin"},
+    "operator-key-456": {"name": "Operator User", "role": "operator"},
+    "readonly-key-789": {"name": "Auditor User", "role": "readonly"}
+}
+
+async def get_current_user(api_key: str = Security(api_key_header)):
+    if not api_key:
+        raise HTTPException(status_code=401, detail="API Key missing")
+    user = USER_DATABASE.get(api_key)
+    if not user:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    return user
+
+def require_role(allowed_roles: List[str]):
+    async def role_dependency(user: Dict[str, Any] = Depends(get_current_user)):
+        if user["role"] not in allowed_roles:
+            raise HTTPException(status_code=403, detail=f"Operation restricted to roles: {', '.join(allowed_roles)}")
+        return user
+    return role_dependency
+
+# --- End Auth ---
 
 # Setup paths for templates
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,6 +55,9 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 class WorkflowRunRequest(BaseModel):
     workflow_yaml: str
     dry_run: bool = False
+
+class PathValidationRequest(BaseModel):
+    path: List[str]
 
 class ExecutionStatus(BaseModel):
     id: str
@@ -65,20 +97,28 @@ async def dashboard():
 
 @app.get("/api/health")
 async def root():
-    return {"message": "COSF API is running", "version": "0.1.0"}
+    return {"message": "COSF API is running", "version": "0.2.0"}
 
 @app.post("/workflows/run", status_code=202)
-async def run_workflow(request: WorkflowRunRequest, background_tasks: BackgroundTasks):
+async def run_workflow(
+    request: WorkflowRunRequest, 
+    background_tasks: BackgroundTasks,
+    user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))
+):
     """Triggers a security workflow execution in the background."""
     try:
         yaml.safe_load(request.workflow_yaml)
         background_tasks.add_task(run_workflow_task, "pending", request.workflow_yaml, dry_run=request.dry_run)
-        return {"message": f"Workflow execution triggered {'(DRY RUN)' if request.dry_run else ''}", "status": "accepted"}
+        return {
+            "message": f"Workflow execution triggered {'(DRY RUN)' if request.dry_run else ''}", 
+            "status": "accepted",
+            "triggered_by": user["name"]
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid workflow: {str(e)}")
 
 @app.get("/executions", response_model=List[ExecutionStatus])
-async def list_executions():
+async def list_executions(user: Dict[str, Any] = Depends(get_current_user)):
     """Lists all historical workflow executions."""
     async with AsyncSessionLocal() as session:
         stmt = select(WorkflowExecution).order_by(WorkflowExecution.start_time.desc())
@@ -96,7 +136,7 @@ async def list_executions():
         ]
 
 @app.get("/executions/{execution_id}")
-async def get_execution(execution_id: str):
+async def get_execution(execution_id: str, user: Dict[str, Any] = Depends(get_current_user)):
     """Returns details of a specific execution."""
     async with AsyncSessionLocal() as session:
         stmt = select(WorkflowExecution).where(WorkflowExecution.id == execution_id).options(selectinload(WorkflowExecution.tasks))
@@ -121,14 +161,56 @@ async def get_execution(execution_id: str):
         }
 
 @app.get("/graph")
-async def get_graph(infer: bool = True):
+async def get_graph(infer: bool = True, user: Dict[str, Any] = Depends(get_current_user)):
     """Returns the full security relationship graph."""
     engine = GraphEngine()
     await engine.build_from_db(infer=infer)
     return engine.get_graph_data()
 
+@app.post("/api/analysis/critical-paths")
+async def analyze_paths(user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))):
+    """Triggers an autonomous attack path analysis."""
+    engine = GraphEngine()
+    await engine.build_from_db(infer=True)
+    return engine.analyze_critical_paths()
+
+@app.post("/api/analysis/validate-path")
+async def validate_path(
+    request: PathValidationRequest, 
+    background_tasks: BackgroundTasks,
+    user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))
+):
+    """Generates and triggers a validation workflow for a selected attack path."""
+    engine = GraphEngine()
+    await engine.build_from_db(infer=True)
+    
+    # We need to pass entities to the validator. 
+    # For now, we'll fetch them again or use a better way.
+    intel = InferenceEngine()
+    # Mock entities for POC validation logic
+    # In a real system, these would be loaded from DB
+    entities = {"vulnerabilities": [], "assets": []} 
+    
+    async with AsyncSessionLocal() as session:
+        from cosf.models.som import Vulnerability, Asset
+        v_res = await session.execute(select(DBVulnerability))
+        entities["vulnerabilities"] = [Vulnerability(id=v.id, asset_id=v.asset_id, cve_id=v.cve_id) for v in v_res.scalars()]
+        a_res = await session.execute(select(DBAsset))
+        entities["assets"] = [Asset(id=a.id, name=a.name, ip_address=a.ip_address) for a in a_res.scalars()]
+
+    workflow = intel.validate_attack_path(request.path, entities)
+    if not workflow:
+        raise HTTPException(status_code=400, detail="Could not generate validation workflow for this path.")
+    
+    # Convert WorkflowSchema to YAML for run_workflow_task
+    # Actually, run_workflow_task expects YAML, but we can update it or handle it here
+    workflow_yaml = yaml.dump(workflow.model_dump())
+    background_tasks.add_task(run_workflow_task, "pending", workflow_yaml, dry_run=False)
+    
+    return {"message": "Autonomous validation triggered", "workflow_name": workflow.name}
+
 @app.get("/assets")
-async def list_assets():
+async def list_assets(user: Dict[str, Any] = Depends(get_current_user)):
     """Returns all assets with their current risk scores."""
     async with AsyncSessionLocal() as session:
         stmt = select(DBAsset).order_by(DBAsset.risk_score.desc())

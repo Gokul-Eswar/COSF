@@ -1,12 +1,14 @@
 import pytest
 from cosf.engine.normalization import NormalizationEngine, SeverityMapper
-from cosf.models.som import Asset, Service, Vulnerability
+from cosf.models.som import Asset, Service, Vulnerability, AttackStep
 
 def test_severity_mapper():
     assert SeverityMapper.normalize("critical") == "Critical"
     assert SeverityMapper.normalize("fatal") == "Critical"
     assert SeverityMapper.normalize("unknown") == "Unknown"
     assert SeverityMapper.normalize("info") == "Info"
+    assert SeverityMapper.normalize("3 (High)") == "High"
+    assert SeverityMapper.normalize("informational") == "Info"
 
 def test_nmap_normalization():
     mock_xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -40,6 +42,59 @@ def test_nuclei_normalization():
     assert vuln.severity == "High"
     assert vuln.cve_id == "test-vuln"
     assert "Test Vulnerability" in vuln.description
+
+def test_zap_normalization():
+    mock_json = """
+    {
+        "site": [
+            {
+                "@host": "example.com",
+                "alerts": [
+                    {
+                        "pluginid": "1001",
+                        "riskdesc": "High (3)",
+                        "name": "XSS",
+                        "desc": "Cross Site Scripting"
+                    }
+                ]
+            }
+        ]
+    }
+    """
+    entities = NormalizationEngine.normalize_output("zap", mock_json)
+    assert len(entities) == 1
+    vuln = entities[0]
+    assert isinstance(vuln, Vulnerability)
+    assert vuln.asset_id == "example.com"
+    assert vuln.severity == "High"
+    assert "XSS" in vuln.description
+
+def test_burp_normalization():
+    mock_json = """
+    [
+        {
+            "issue_type_id": "00100100",
+            "severity": "high",
+            "name": "SQL Injection",
+            "description": "SQLi found",
+            "host": "burp.example.com"
+        }
+    ]
+    """
+    entities = NormalizationEngine.normalize_output("burp", mock_json)
+    assert len(entities) == 1
+    vuln = entities[0]
+    assert isinstance(vuln, Vulnerability)
+    assert vuln.asset_id == "burp.example.com"
+    assert vuln.severity == "High"
+
+def test_metasploit_normalization():
+    mock_json = "{'job_id': 1, 'uuid': 'some-uuid'}"
+    entities = NormalizationEngine.normalize_output("metasploit", mock_json)
+    assert len(entities) == 1
+    step = entities[0]
+    assert isinstance(step, AttackStep)
+    assert "Job 1" in step.description
 
 def test_nmap_normalization_with_fingerprints():
     mock_xml = """<?xml version="1.0" encoding="UTF-8"?>
