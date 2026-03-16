@@ -197,12 +197,29 @@
                     </div>
                     
                     <div class="p-6 space-y-5">
+                        <!-- AI Generation Section -->
+                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 mb-2">
+                            <label class="block">
+                                <div class="flex justify-between items-baseline mb-1">
+                                    <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">AI Workflow Assistant</span>
+                                    <span class="text-[10px] text-indigo-400">Natural Language to WDL</span>
+                                </div>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="text" id="ai-prompt" class="flex-1 rounded-lg border-slate-200 text-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Scan 192.168.1.0/24 for web services and check for vulns">
+                                    <button id="ai-gen-btn" onclick="generateWithAI()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all flex items-center shrink-0 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        Generate
+                                    </button>
+                                </div>
+                            </label>
+                        </div>
+
                         <label class="block">
                             <div class="flex justify-between items-baseline mb-1">
                                 <span class="text-sm font-semibold text-slate-700">Workflow Definition (YAML)</span>
                                 <span class="text-xs text-slate-400">Declarative syntax</span>
                             </div>
-                            <textarea id="workflow-yaml" rows="12" class="mt-1 block w-full rounded-xl border-slate-200 shadow-inner focus:border-blue-500 focus:ring-blue-500 font-mono text-sm bg-slate-50 p-4 transition-colors" placeholder="name: My Assessment&#10;tasks:&#10;  - id: scan&#10;    adapter: nmap&#10;    params:&#10;      target: 127.0.0.1"></textarea>
+                            <textarea id="workflow-yaml" rows="10" class="mt-1 block w-full rounded-xl border-slate-200 shadow-inner focus:border-blue-500 focus:ring-blue-500 font-mono text-sm bg-slate-50 p-4 transition-colors" placeholder="name: My Assessment&#10;tasks:&#10;  - id: scan&#10;    adapter: nmap&#10;    params:&#10;      target: 127.0.0.1"></textarea>
                         </label>
                     </div>
                     
@@ -370,6 +387,48 @@
                         .classed("critical", true);
                 }
             });
+        }
+
+        async function generateWithAI() {
+            const prompt = document.getElementById('ai-prompt').value;
+            if (!prompt) {
+                alert("Please enter a prompt first!");
+                return;
+            }
+
+            const btn = document.getElementById('ai-gen-btn');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Generating...`;
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ai/generate`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-COSF-API-Key': 'admin-key-123'
+                    },
+                    body: JSON.stringify({ prompt: prompt, provider: 'ollama' })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('workflow-yaml').value = data.workflow_yaml;
+                    // Highlight the textarea briefly to show it was updated
+                    const textarea = document.getElementById('workflow-yaml');
+                    textarea.classList.add('ring-2', 'ring-indigo-400');
+                    setTimeout(() => textarea.classList.remove('ring-2', 'ring-indigo-400'), 2000);
+                } else {
+                    const error = await res.json();
+                    alert("AI Generation failed: " + (error.detail || "Unknown error"));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Network error during AI generation.");
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
         }
 
         async function submitWorkflow(dryRun = false) {

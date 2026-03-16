@@ -56,6 +56,14 @@ class WorkflowRunRequest(BaseModel):
     workflow_yaml: str
     dry_run: bool = False
 
+class WorkflowGenerationRequest(BaseModel):
+    prompt: str
+    provider: Optional[str] = "ollama"
+
+class WorkflowGenerationResponse(BaseModel):
+    workflow_yaml: str
+    workflow_name: str
+
 class PathValidationRequest(BaseModel):
     path: List[str]
 
@@ -226,3 +234,30 @@ async def list_assets(user: Dict[str, Any] = Depends(get_current_user)):
                 "tags": a.tags
             } for a in assets
         ]
+
+@app.post("/api/ai/generate", response_model=WorkflowGenerationResponse)
+async def generate_workflow_ai(
+    request: WorkflowGenerationRequest,
+    user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))
+):
+    """Generates a security workflow from a natural language prompt using AI."""
+    from cosf.ai.prompts import PromptManager
+    from cosf.ai.engine import GenerativeEngine
+    
+    registry = AdapterRegistry()
+    load_adapters(registry)
+    
+    prompt_mgr = PromptManager(registered_adapters=registry.list_adapters())
+    # Use environment variable for API key if provided
+    api_key = os.getenv("OPENAI_API_KEY")
+    ai_engine = GenerativeEngine(prompt_manager=prompt_mgr, provider=request.provider, api_key=api_key)
+    
+    try:
+        yaml_content = await ai_engine.generate_workflow(request.prompt)
+        validated_schema = ai_engine.validate_generated_yaml(yaml_content)
+        return WorkflowGenerationResponse(
+            workflow_yaml=yaml_content,
+            workflow_name=validated_schema.name
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Generation failed: {str(e)}")
