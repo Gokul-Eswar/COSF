@@ -26,8 +26,8 @@ async def test_nuclei_adapter_parsing():
         assert isinstance(result, TaskResult)
         vulnerabilities = result.entities
         
-        assert len(vulnerabilities) == 1
-        vuln = vulnerabilities[0]
+        assert len(vulnerabilities) == 2
+        vuln = next(e for e in vulnerabilities if isinstance(e, Vulnerability))
         assert vuln.cve_id == "cve-2021-1234"
         assert vuln.severity == "High"
         assert "Test Vulnerability" in vuln.description

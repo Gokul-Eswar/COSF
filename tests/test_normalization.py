@@ -36,9 +36,8 @@ def test_nuclei_normalization():
     mock_json = '{"template-id":"test-vuln","info":{"severity":"high","name":"Test Vulnerability"},"ip":"1.1.1.1","matched-at":"http://1.1.1.1"}'
     
     entities = NormalizationEngine.normalize_output("nuclei", mock_json)
-    assert len(entities) == 1
-    vuln = entities[0]
-    assert isinstance(vuln, Vulnerability)
+    assert len(entities) == 2
+    vuln = next(e for e in entities if isinstance(e, Vulnerability))
     assert vuln.severity == "High"
     assert vuln.cve_id == "test-vuln"
     assert "Test Vulnerability" in vuln.description
@@ -62,9 +61,8 @@ def test_zap_normalization():
     }
     """
     entities = NormalizationEngine.normalize_output("zap", mock_json)
-    assert len(entities) == 1
-    vuln = entities[0]
-    assert isinstance(vuln, Vulnerability)
+    assert len(entities) == 2
+    vuln = next(e for e in entities if isinstance(e, Vulnerability))
     assert vuln.asset_id == "example.com"
     assert vuln.severity == "High"
     assert "XSS" in vuln.description
