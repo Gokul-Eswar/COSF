@@ -208,6 +208,31 @@ async def analyze_paths(user: Dict[str, Any] = Depends(require_role(["admin", "o
     await engine.build_from_db(infer=True)
     return engine.analyze_critical_paths()
 
+@app.post("/api/analysis/preview-validation")
+async def preview_validation(
+    request: PathValidationRequest, 
+    user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))
+):
+    """Generates a validation workflow for an attack path but does not run it."""
+    engine = GraphEngine()
+    await engine.build_from_db(infer=True)
+    
+    intel = InferenceEngine()
+    entities = {"vulnerabilities": [], "assets": []} 
+    
+    async with AsyncSessionLocal() as session:
+        from cosf.models.som import Vulnerability, Asset
+        v_res = await session.execute(select(DBVulnerability))
+        entities["vulnerabilities"] = [Vulnerability(id=v.id, asset_id=v.asset_id, cve_id=v.cve_id) for v in v_res.scalars()]
+        a_res = await session.execute(select(DBAsset))
+        entities["assets"] = [Asset(id=a.id, name=a.name, ip_address=a.ip_address) for a in a_res.scalars()]
+
+    workflow = intel.validate_attack_path(request.path, entities)
+    if not workflow:
+        raise HTTPException(status_code=400, detail="Could not generate validation workflow for this path.")
+    
+    return {"workflow_yaml": yaml.dump(workflow.model_dump()), "workflow_name": workflow.name}
+
 @app.post("/api/analysis/validate-path")
 async def validate_path(
     request: PathValidationRequest, 

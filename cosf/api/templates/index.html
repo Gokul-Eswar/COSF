@@ -577,16 +577,25 @@
         }
 
         async function validatePath(path) {
-            if (!confirm("This will launch an autonomous validation workflow. Proceed?")) return;
             try {
-                const res = await fetch(`${API_BASE}/api/analysis/validate-path`, {
+                const res = await fetch(`${API_BASE}/api/analysis/preview-validation`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-COSF-API-Key': 'admin-key-123' },
                     body: JSON.stringify({ path: path })
                 });
-                if (res.ok) { 
-                    alert("Validation workflow triggered!");
-                    refreshData();
+                if (res.ok) {
+                    const data = await res.json();
+                    toggleModal('scan-modal');
+                    document.getElementById('workflow-yaml').value = data.workflow_yaml;
+                    document.getElementById('ai-prompt').value = `Validate path: ${path.join(' -> ')}`;
+                    
+                    // Highlight the textarea briefly
+                    const textarea = document.getElementById('workflow-yaml');
+                    textarea.classList.add('ring-2', 'ring-indigo-400');
+                    setTimeout(() => textarea.classList.remove('ring-2', 'ring-indigo-400'), 2000);
+                } else {
+                    const error = await res.json();
+                    alert("Failed to generate validation preview: " + (error.detail || "Unknown error"));
                 }
             } catch (e) { console.error(e); }
         }
