@@ -235,6 +235,71 @@ async def list_assets(user: Dict[str, Any] = Depends(get_current_user)):
             } for a in assets
         ]
 
+@app.get("/api/assets/{asset_id}")
+async def get_asset_details(asset_id: str, user: Dict[str, Any] = Depends(get_current_user)):
+    """Returns full details of a specific asset, including its services and vulnerabilities."""
+    async with AsyncSessionLocal() as session:
+        from cosf.models.database import DBService, DBVulnerability
+        # Fetch asset
+        stmt = select(DBAsset).where(DBAsset.id == asset_id)
+        asset = (await session.execute(stmt)).scalar_one_or_none()
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        # Fetch services
+        s_stmt = select(DBService).where(DBService.asset_id == asset_id)
+        services = (await session.execute(s_stmt)).scalars().all()
+        
+        # Fetch vulnerabilities
+        v_stmt = select(DBVulnerability).where(DBVulnerability.asset_id == asset_id)
+        vulns = (await session.execute(v_stmt)).scalars().all()
+
+        # Fetch evidence/raw outputs linked to this asset via tasks
+        # (This is a bit more complex, for now we return basic info)
+        
+        return {
+            "id": asset.id,
+            "name": asset.name,
+            "ip": asset.ip_address,
+            "os": asset.os,
+            "risk_score": asset.risk_score,
+            "tags": asset.tags,
+            "services": [
+                {
+                    "id": s.id,
+                    "port": s.port,
+                    "protocol": s.protocol,
+                    "name": s.name,
+                    "version": s.version
+                } for s in services
+            ],
+            "vulnerabilities": [
+                {
+                    "id": v.id,
+                    "cve": v.cve_id,
+                    "severity": v.severity,
+                    "description": v.description
+                } for v in vulns
+            ]
+        }
+
+@app.get("/api/vulnerabilities/{vuln_id}")
+async def get_vulnerability_details(vuln_id: str, user: Dict[str, Any] = Depends(get_current_user)):
+    """Returns details of a specific vulnerability."""
+    async with AsyncSessionLocal() as session:
+        stmt = select(DBVulnerability).where(DBVulnerability.id == vuln_id)
+        vuln = (await session.execute(stmt)).scalar_one_or_none()
+        if not vuln:
+            raise HTTPException(status_code=404, detail="Vulnerability not found")
+        
+        return {
+            "id": vuln.id,
+            "cve": vuln.cve_id,
+            "severity": vuln.severity,
+            "description": vuln.description,
+            "remediation": vuln.remediation
+        }
+
 @app.post("/api/ai/generate", response_model=WorkflowGenerationResponse)
 async def generate_workflow_ai(
     request: WorkflowGenerationRequest,

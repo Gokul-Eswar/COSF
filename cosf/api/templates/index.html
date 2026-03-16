@@ -165,6 +165,29 @@
             <!-- Tooltip -->
             <div id="d3-tooltip"></div>
             
+            <!-- Detail Side Panel -->
+            <div id="detail-panel" class="absolute top-0 right-0 w-96 h-full bg-white shadow-2xl border-l border-slate-200 transform translate-x-full transition-transform duration-300 ease-in-out z-30 overflow-y-auto hidden">
+                <div class="p-6">
+                    <div class="flex justify-between items-start mb-6">
+                        <div id="panel-type-badge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"></div>
+                        <button onclick="closePanel()" class="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1.5 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    
+                    <h2 id="panel-title" class="text-2xl font-bold text-slate-800 mb-1"></h2>
+                    <p id="panel-subtitle" class="text-sm text-slate-500 font-mono mb-6"></p>
+                    
+                    <div id="panel-content" class="space-y-6">
+                        <!-- Dynamic content here -->
+                    </div>
+
+                    <div id="panel-actions" class="mt-8 pt-6 border-t border-slate-100 space-y-3">
+                        <!-- Action buttons here -->
+                    </div>
+                </div>
+            </div>
+            
             <!-- Graph Legend -->
             <div class="absolute top-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-3 rounded-lg shadow-sm z-10 pointer-events-none">
                 <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Legend</h3>
@@ -243,6 +266,117 @@
         const API_BASE = "";
         let currentGraphData = null;
         let d3Zoom = null;
+
+        function closePanel() {
+            const panel = document.getElementById('detail-panel');
+            panel.classList.add('translate-x-full');
+            setTimeout(() => panel.classList.add('hidden'), 300);
+        }
+
+        async function showPanel(d) {
+            const panel = document.getElementById('detail-panel');
+            const typeBadge = document.getElementById('panel-type-badge');
+            const title = document.getElementById('panel-title');
+            const subtitle = document.getElementById('panel-subtitle');
+            const content = document.getElementById('panel-content');
+            const actions = document.getElementById('panel-actions');
+
+            // Reset and show loading
+            panel.classList.remove('hidden');
+            setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+            
+            title.innerText = d.label || d.id;
+            subtitle.innerText = d.id;
+            content.innerHTML = '<div class="animate-pulse flex space-y-4 flex-col"><div class="h-4 bg-slate-100 rounded w-3/4"></div><div class="h-4 bg-slate-100 rounded w-1/2"></div></div>';
+            actions.innerHTML = '';
+
+            const typeColors = {
+                asset: 'bg-blue-100 text-blue-700',
+                service: 'bg-emerald-100 text-emerald-700',
+                vulnerability: 'bg-red-100 text-red-700',
+                source: 'bg-slate-800 text-white'
+            };
+            typeBadge.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${typeColors[d.type] || 'bg-slate-100'}`;
+            typeBadge.innerText = d.type;
+
+            try {
+                if (d.type === 'asset') {
+                    const res = await fetch(`${API_BASE}/api/assets/${d.id}`, { headers: {'X-COSF-API-Key': 'admin-key-123'} });
+                    const data = await res.json();
+                    
+                    let html = `
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Properties</h3>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div class="text-slate-500">OS</div><div class="font-medium text-slate-800">${data.os || 'Unknown'}</div>
+                                <div class="text-slate-500">IP Address</div><div class="font-mono text-slate-800">${data.ip}</div>
+                                <div class="text-slate-500">Risk Score</div><div class="font-bold text-red-600">${data.risk_score.toFixed(1)}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Services (${data.services.length})</h3>
+                            <div class="space-y-2">
+                                ${data.services.map(s => `
+                                    <div class="p-2 bg-slate-50 rounded border border-slate-100 text-xs">
+                                        <span class="font-bold text-slate-700">${s.protocol}/${s.port}</span> - ${s.name || 'unknown'}
+                                        ${s.version ? `<p class="text-[10px] text-slate-400 mt-0.5">${s.version}</p>` : ''}
+                                    </div>
+                                `).join('') || '<p class="text-xs text-slate-400 italic">No services discovered.</p>'}
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Vulnerabilities (${data.vulnerabilities.length})</h3>
+                            <div class="space-y-2">
+                                ${data.vulnerabilities.map(v => `
+                                    <div class="p-2 bg-red-50 rounded border border-red-100 text-xs">
+                                        <span class="font-bold text-red-700">${v.cve || 'VULN'}</span>
+                                        <p class="text-[10px] text-red-600/70 mt-0.5 line-clamp-2">${v.description}</p>
+                                    </div>
+                                `).join('') || '<p class="text-xs text-slate-400 italic">No vulnerabilities found.</p>'}
+                            </div>
+                        </div>
+                    `;
+                    content.innerHTML = html;
+                    
+                    actions.innerHTML = `
+                        <button onclick="quickScan('${data.ip}')" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex justify-center items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            Deep Scan Asset
+                        </button>
+                    `;
+                } else if (d.type === 'vulnerability') {
+                    const res = await fetch(`${API_BASE}/api/vulnerabilities/${d.id}`, { headers: {'X-COSF-API-Key': 'admin-key-123'} });
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Severity</h3>
+                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-sm font-bold uppercase">${data.severity}</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Description</h3>
+                            <p class="text-sm text-slate-600 leading-relaxed">${data.description}</p>
+                        </div>
+                        ${data.remediation ? `
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 text-emerald-600">Remediation</h3>
+                            <p class="text-sm text-slate-600 leading-relaxed bg-emerald-50 p-3 rounded-lg border border-emerald-100">${data.remediation}</p>
+                        </div>` : ''}
+                    `;
+                } else {
+                    content.innerHTML = `<p class="text-sm text-slate-500 italic">No detailed information available for this node type.</p>`;
+                }
+            } catch (e) {
+                console.error(e);
+                content.innerHTML = `<p class="text-sm text-red-500">Failed to load details.</p>`;
+            }
+        }
+
+        function quickScan(target) {
+            toggleModal('scan-modal');
+            document.getElementById('ai-prompt').value = `Scan ${target} for all vulnerabilities and services`;
+            // Scroll to the AI section
+            document.getElementById('ai-prompt').focus();
+        }
 
         function toggleModal(id) {
             const modal = document.getElementById(id);
@@ -535,6 +669,9 @@
             .on("mouseout", function(event, d) {
                 d3.select(this).select("circle").attr("stroke-width", 2).attr("stroke", "#fff");
                 tooltip.style.opacity = 0;
+            })
+            .on("click", function(event, d) {
+                showPanel(d);
             });
 
             node.append("circle")
