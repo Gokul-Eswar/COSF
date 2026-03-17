@@ -129,6 +129,40 @@ def history():
         typer.echo(f"Error: Failed to retrieve history: {e}", err=True)
         raise typer.Exit(code=1)
 
+@app.command(name="monitor")
+def monitor(
+    execution_id: str = typer.Argument(..., help="The ID of the execution to monitor"),
+    remote: str = typer.Option("http://127.0.0.1:8000", "--remote", "-r", help="URL of the COSF server"),
+    api_key: str = typer.Option("admin-key-123", "--api-key", "-k", help="API Key for authentication")
+):
+    """Monitor real-time logs of a workflow execution via SSE."""
+    async def stream_logs():
+        import httpx
+        url = f"{remote.rstrip('/')}/api/executions/{execution_id}/logs?token={api_key}"
+        typer.echo(f"Connecting to log stream for execution {execution_id}...")
+        
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("GET", url) as response:
+                    if response.status_code != 200:
+                        typer.echo(f"Error: Server returned status {response.status_code}", err=True)
+                        return
+                    
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            log_msg = line[6:]
+                            typer.echo(log_msg)
+        except Exception as e:
+            typer.echo(f"Error: Connection lost or failed: {e}", err=True)
+
+    try:
+        asyncio.run(stream_logs())
+    except KeyboardInterrupt:
+        typer.echo("\nMonitoring stopped by user.")
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+
 @app.command(name="report")
 def report(
     execution_id: str = typer.Argument(..., help="The ID of the execution to report on"),

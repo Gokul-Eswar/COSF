@@ -231,12 +231,12 @@ class ExecutionEngine:
             except Exception as e:
                 db_exec.status = "failed"
                 db_exec.signature = CryptoManager.sign_message(priv_key, f"{db_exec.id}:failed:{str(e)}")
-                print(f"Workflow stopped due to failure: {e}")
+                self.log(db_exec.id, f"Workflow stopped due to failure: {e}", level="error")
                 raise e
             finally:
                 db_exec.end_time = datetime.now(timezone.utc)
                 await session.commit()
-                print(f"Workflow {db_exec.status}: {workflow.name}")
+                self.log(db_exec.id, f"Workflow {db_exec.status}: {workflow.name}")
 
     async def _record_skipped_task(self, task: WorkflowTask, execution_id: str, session: AsyncSession):
         """Records a skipped task in the database."""

@@ -1,6 +1,21 @@
 import pytest
-from cosf.engine.intelligence import InferenceEngine, CredentialReuseRule, ServiceMatchingRule
+from cosf.engine.intelligence import InferenceEngine, CredentialReuseRule, ServiceMatchingRule, NetworkProximityRule
 from cosf.models.som import Asset, Service, Credential, Vulnerability
+
+def test_network_proximity_rule():
+    rule = NetworkProximityRule()
+    
+    a1 = Asset(id="A", name="A", ip_address="192.168.1.10")
+    a2 = Asset(id="B", name="B", ip_address="192.168.1.50")
+    a3 = Asset(id="C", name="C", ip_address="10.0.0.1")
+    
+    rels = rule.apply({"assets": [a1, a2, a3]})
+    
+    assert len(rels) == 1
+    rel = rels[0]
+    assert rel.type == "NETWORK_PROXIMITY"
+    assert {rel.source_id, rel.target_id} == {"A", "B"}
+    assert rel.metadata["subnet"] == "192.168.1.0/24"
 
 def test_credential_reuse_rule():
     rule = CredentialReuseRule()

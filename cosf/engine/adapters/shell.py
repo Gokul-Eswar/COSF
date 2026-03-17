@@ -37,14 +37,16 @@ class ShellAdapter(BaseAdapter):
                 self.logger.warning(f"Command failed with exit code {process.returncode}")
                 # We still return the output as it might contain useful info
             
+            raw_output = stdout_str if stdout_str else stderr_str
+            
             return TaskResult(
-                entities=[], # Shell adapter doesn't automatically parse entities yet
+                entities=self.normalize(raw_output),
                 outputs={
                     "stdout": stdout_str,
                     "stderr": stderr_str,
                     "exit_code": process.returncode
                 },
-                raw_output=stdout_str if stdout_str else stderr_str
+                raw_output=raw_output
             )
         except Exception as e:
             self.logger.error(f"Failed to execute shell command: {e}")

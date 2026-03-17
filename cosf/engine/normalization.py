@@ -277,6 +277,85 @@ class MetasploitNormalizer(BaseNormalizer):
             pass
         return entities
 
+class ShellNormalizer(BaseNormalizer):
+    """Generic normalizer for shell output, attempting to parse JSON for SOM entities."""
+    
+    def normalize(self, raw_output: str) -> List[SOMBase]:
+        if not raw_output: return []
+        
+        entities = []
+        try:
+            # Look for JSON in the output
+            start = raw_output.find('[')
+            if start == -1: start = raw_output.find('{')
+            
+            if start != -1:
+                # Try parsing from start to the end
+                potential_json = raw_output[start:].strip()
+                data = json.loads(potential_json)
+                
+                # If it's a list, try to map objects to SOM types
+                if isinstance(data, list):
+                    for item in data:
+                        entities.extend(self._map_item(item))
+                elif isinstance(data, dict):
+                    entities.extend(self._map_item(data))
+        except Exception:
+            pass
+        return entities
+
+    def _map_item(self, item: Dict[str, Any]) -> List[SOMBase]:
+        entities = []
+        # Basic heuristic mapping
+        if "ip_address" in item:
+            entities.append(Asset(**item))
+        elif "port" in item:
+            entities.append(Service(**item))
+        elif "severity" in item or "cve_id" in item:
+            entities.append(Vulnerability(**item))
+        return entities
+
+class PythonNormalizer(ShellNormalizer):
+    """Normalizes output from custom Python scripts (re-uses shell JSON logic)."""
+    pass
+
+class ShodanNormalizer(BaseNormalizer):
+    """Normalizes Shodan search results into Asset and Service entities."""
+    
+    def normalize(self, raw_output: str) -> List[SOMBase]:
+        entities = []
+        try:
+            data = json.loads(raw_output)
+            matches = data.get("matches", [])
+            
+            for match in matches:
+                ip_str = match.get("ip_str")
+                if not ip_str: continue
+                
+                asset = Asset(
+                    name=match.get("hostnames", [ip_str])[0],
+                    ip_address=ip_str,
+                    os=match.get("os"),
+                    tags=["shodan", "external"]
+                )
+                entities.append(asset)
+                
+                # Add service info
+                port = match.get("port")
+                if port:
+                    entities.append(Service(
+                        asset_id=asset.id,
+                        port=port,
+                        protocol="tcp", # Shodan defaults to TCP for most port scans
+                        name=match.get("transport", "unknown"),
+                        product=match.get("product"),
+                        version=match.get("version"),
+                        metadata={"isp": match.get("isp"), "org": match.get("org")}
+                    ))
+        except Exception:
+            pass
+        return entities
+
 class NormalizationEngine:
     """Registry and orchestrator for data normalizers."""
     
@@ -285,7 +364,10 @@ class NormalizationEngine:
         "nuclei": NucleiNormalizer(),
         "zap": ZapNormalizer(),
         "burp": BurpNormalizer(),
-        "metasploit": MetasploitNormalizer()
+        "metasploit": MetasploitNormalizer(),
+        "shell": ShellNormalizer(),
+        "python": PythonNormalizer(),
+        "shodan": ShodanNormalizer()
     }
 
     @classmethod

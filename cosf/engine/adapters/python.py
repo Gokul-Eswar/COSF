@@ -41,7 +41,11 @@ class PythonAdapter(BaseAdapter):
                 data = json.loads(raw_output)
                 return TaskResult(**data)
             except json.JSONDecodeError:
-                return TaskResult(raw_output=raw_output, outputs={"info": "Script executed but did not return valid JSON"})
+                return TaskResult(
+                    entities=self.normalize(raw_output),
+                    raw_output=raw_output, 
+                    outputs={"info": "Script executed. Data parsed via fallback normalizer."}
+                )
                 
         except Exception as e:
             self.logger.error(f"Python script execution failed: {e}")

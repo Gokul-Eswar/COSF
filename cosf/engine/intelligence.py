@@ -1,3 +1,4 @@
+import ipaddress
 from typing import List, Any, Dict, Set, Optional
 from abc import ABC, abstractmethod
 from cosf.models.som import Relationship, Asset, Service, Credential, Vulnerability
@@ -8,6 +9,41 @@ class InferenceRule(ABC):
     @abstractmethod
     def apply(self, entities: Dict[str, List[Any]]) -> List[Relationship]:
         pass
+
+class NetworkProximityRule(InferenceRule):
+    """Infers relationships between assets in the same network subnet."""
+    def apply(self, entities: Dict[str, List[Any]]) -> List[Relationship]:
+        relationships = []
+        assets = entities.get("assets", [])
+        
+        # Group assets by /24 subnet (standard CIDR for proximity inference)
+        subnet_map: Dict[str, Set[str]] = {}
+        for a in assets:
+            if not a.ip_address: continue
+            try:
+                ip = ipaddress.ip_address(str(a.ip_address))
+                # Create a /24 subnet key
+                if isinstance(ip, ipaddress.IPv4Address):
+                    network = ipaddress.IPv4Network(f"{str(ip)}/24", strict=False)
+                    key = str(network)
+                    if key not in subnet_map:
+                        subnet_map[key] = set()
+                    subnet_map[key].add(a.id)
+            except ValueError:
+                continue
+
+        for key, asset_ids in subnet_map.items():
+            if len(asset_ids) > 1:
+                asset_list = list(asset_ids)
+                for i in range(len(asset_list)):
+                    for j in range(i + 1, len(asset_list)):
+                        relationships.append(Relationship(
+                            source_id=asset_list[i],
+                            target_id=asset_list[j],
+                            type="NETWORK_PROXIMITY",
+                            metadata={"subnet": key, "source": "inference"}
+                        ))
+        return relationships
 
 class CredentialReuseRule(InferenceRule):
     """Infers relationships between assets that share the same credentials."""
@@ -101,6 +137,7 @@ class InferenceEngine:
     
     def __init__(self):
         self.rules: List[InferenceRule] = [
+            NetworkProximityRule(),
             CredentialReuseRule(),
             ServiceMatchingRule(),
             ExploitMappingRule()

@@ -61,3 +61,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [x] Track: Simulation & "Dry Run" Mode
 - [Folder](./tracks/simulation/)
+
+---
+## [ ] Track: v1.0 Stability & Ecosystem Expansion
+- [Roadmap](../next.md)

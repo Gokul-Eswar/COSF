@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Depends, Security
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Depends, Security, Query
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -55,7 +55,7 @@ USER_DATABASE = {
 
 async def get_current_user(
     api_key: str = Security(api_key_header),
-    token: Optional[str] = None
+    token: Optional[str] = Query(None)
 ):
     actual_key = api_key or token
     if not actual_key:
