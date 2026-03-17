@@ -5,7 +5,7 @@ The Cyber Operations Standardization Framework (COSF) has achieved its core arch
 ---
 
 ## 1. Enterprise Orchestration & Deployment
-- [ ] **Docker Compose Orchestration:** Provide a `docker-compose.yaml` to spin up the API, PostgreSQL, and a Redis worker for asynchronous task execution.
+- [x] **Docker Compose Orchestration:** Provide a `docker-compose.yaml` to spin up the API, PostgreSQL, and a Redis worker for asynchronous task execution.
 - [ ] **Worker Scaling:** Implement a standalone `cosf worker` command to scale execution horizontally across multiple nodes.
 - [ ] **Persistent Vault Integration:** Support HashiCorp Vault or AWS Secrets Manager for storing sensitive adapter credentials (API keys, SSH keys).
 
