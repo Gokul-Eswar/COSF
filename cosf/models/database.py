@@ -110,3 +110,13 @@ class DBRelationship(Base):
     target_id: Mapped[str] = mapped_column(String(36))
     type: Mapped[str] = mapped_column(String(100))
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+class DBWorkflowDraft(Base):
+    __tablename__ = "workflow_drafts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    content: Mapped[dict] = mapped_column(JSON) # Stores the visual layout/tasks
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
