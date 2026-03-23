@@ -5,16 +5,17 @@ With the core framework stabilized at v1.0, the next phase focuses on usability,
 ---
 
 ## 1. Advanced Workflow UX
-- [ ] **Visual Workflow Builder:** A low-code, drag-and-drop web interface for composing WDL files with real-time validation.
+- [x] **Visual Workflow Builder (Backend):** CRUD endpoints for drafts, adapter metadata, and WDL export logic.
+- [ ] **Visual Workflow Builder (Frontend):** A low-code, drag-and-drop web interface for composing WDL files.
 - [ ] **Template Marketplace:** An integrated "Store" in the dashboard to discover and install community-verified playbooks and adapters.
 
 ## 2. Intelligence & Autonomous Action
-- [ ] **Auto-Remediation Agents:** Specialized adapters that can execute fixes (e.g., patch a server, update a firewall rule) based on SOM findings.
+- [x] **Auto-Remediation Agents:** RemediationAdapter and InferenceEngine logic to suggest and execute fixes.
 - [ ] **Predictive Attack Pathing:** Use ML to predict the next likely move of an attacker based on historical drift and graph centrality.
 - [ ] **Natural Language Query (NLQ):** An AI-powered search bar to ask questions like "Which of my assets are vulnerable to Log4Shell and accessible from the internet?"
 
 ## 3. Enterprise Integration
-- [ ] **External Hook System:** Bi-directional integration with Jira (ticketing), Slack/Teams (notifications), and Splunk/Sentinel (SIEM).
+- [x] **External Hook System (Foundation):** Slack and Jira notification support integrated into ExecutionEngine.
 - [ ] **Global Asset Inventory (GAI):** Continuous, background discovery across AWS, Azure, GCP, and On-Prem to maintain a "Living Graph."
 - [ ] **SAML/OIDC Support:** Enterprise-grade identity provider integration for SSO.
 
