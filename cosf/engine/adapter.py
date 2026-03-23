@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List, Union
 from pydantic import BaseModel
 from cosf.engine.normalization import NormalizationEngine
+from cosf.utils.secrets import get_secret_manager
 
 class TaskResult(BaseModel):
     """Encapsulates the result of a task execution."""
@@ -24,6 +25,7 @@ class BaseAdapter(ABC):
     def __init__(self):
         self.logger = logging.getLogger(f"cosf.adapter.{self.__class__.__name__}")
         self._docker_client: Optional[docker.DockerClient] = None
+        self._secret_manager = get_secret_manager()
 
     @property
     def docker_client(self) -> docker.DockerClient:
@@ -38,12 +40,34 @@ class BaseAdapter(ABC):
 
     async def run(self, params: Dict[str, Any], dry_run: bool = False) -> Union[TaskResult, List[Any], Dict[str, Any]]:
         """Template method for running an adapter, handling dry-run logic."""
+        # Resolve secrets in parameters before execution
+        resolved_params = self._resolve_secrets(params)
+        
         if dry_run:
             from cosf.engine.simulation import MockResponseGenerator
             self.logger.info(f"Running {self.ADAPTER_NAME} in DRY-RUN mode.")
-            return MockResponseGenerator.generate(self.ADAPTER_NAME, params)
+            return MockResponseGenerator.generate(self.ADAPTER_NAME, resolved_params)
         
-        return await self._run(params)
+        return await self._run(resolved_params)
+
+    def _resolve_secrets(self, params: Any) -> Any:
+        """Recursively resolves secret references in the parameters."""
+        if isinstance(params, dict):
+            return {k: self._resolve_secrets(v) for k, v in params.items()}
+        elif isinstance(params, list):
+            return [self._resolve_secrets(v) for v in params]
+        elif isinstance(params, str) and params.startswith("secret:"):
+            # Format: secret:path/to/secret:key
+            parts = params.split(":", 2)
+            if len(parts) == 3:
+                _, path, key = parts
+                secret_value = self._secret_manager.get_secret(path, key)
+                if secret_value:
+                    return secret_value
+                else:
+                    self.logger.warning(f"Secret not found: {path}:{key}")
+            return params
+        return params
 
     @abstractmethod
     async def _run(self, params: Dict[str, Any]) -> Union[TaskResult, List[Any], Dict[str, Any]]:

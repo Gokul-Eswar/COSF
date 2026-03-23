@@ -189,6 +189,25 @@ def report(
         typer.echo(f"Error: Failed to generate report: {e}", err=True)
         raise typer.Exit(code=1)
 
+@app.command(name="worker")
+def worker(
+    queue_name: str = typer.Option("default", "--queue", "-q", help="Name of the queue to listen on"),
+    redis_url: str = typer.Option("redis://localhost:6379", "--redis", "-u", envvar="REDIS_URL", help="Redis connection URL")
+):
+    """Start a COSF distributed worker node."""
+    from redis import Redis
+    from rq import Worker, Queue, Connection
+    
+    typer.echo(f"Starting COSF worker on queue: {queue_name}...")
+    try:
+        conn = Redis.from_url(redis_url)
+        with Connection(conn):
+            worker = Worker([Queue(queue_name)])
+            worker.work()
+    except Exception as e:
+        typer.echo(f"Error: Worker failed: {e}", err=True)
+        raise typer.Exit(code=1)
+
 @app.command(name="verify")
 def verify(execution_id: str = typer.Argument(..., help="Execution ID to verify")):
     """Verify the cryptographic integrity of a workflow execution."""

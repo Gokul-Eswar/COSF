@@ -16,36 +16,53 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: cosf-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   api:
     build: .
     container_name: cosf-api
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgresql+asyncpg://cosf:cosf-password-123@db:5432/cosf
+      - REDIS_URL=redis://redis:6379
       - PORT=8000
     ports:
       - "8000:8000"
     volumes:
       - .:/app
-      - /var/run/docker.sock:/var/run/docker.sock # Required for tool adapters using Docker
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
-  # Future Worker Node (Scalable)
-  # worker:
-  #   build: .
-  #   container_name: cosf-worker
-  #   depends_on:
-  #     - db
-  #     - api
-  #   environment:
-  #     - DATABASE_URL=postgresql+asyncpg://cosf:cosf-password-123@db:5432/cosf
-  #     - WORKER_MODE=true
-  #   command: ["cosf", "worker"] # Command to be implemented
-  #   volumes:
-  #     - .:/app
-  #     - /var/run/docker.sock:/var/run/docker.sock
+  worker:
+    build: .
+    container_name: cosf-worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://cosf:cosf-password-123@db:5432/cosf
+      - REDIS_URL=redis://redis:6379
+      - WORKER_MODE=true
+    command: ["cosf", "worker"]
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
 
 volumes:
   postgres_data:

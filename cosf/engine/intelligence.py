@@ -1,5 +1,6 @@
 import ipaddress
-from typing import List, Any, Dict, Set, Optional
+import datetime
+from typing import List, Any, Dict, Set, Optional, Tuple
 from abc import ABC, abstractmethod
 from cosf.models.som import Relationship, Asset, Service, Credential, Vulnerability
 from cosf.parser.workflow import WorkflowSchema, WorkflowTask
@@ -132,6 +133,39 @@ class ExploitMappingRule(InferenceRule):
                 ))
         return relationships
 
+class CrossToolCorrelationRule(InferenceRule):
+    """Correlates data from different tools (e.g., Nmap, Nuclei, Shodan)."""
+    
+    def apply(self, entities: Dict[str, List[Any]]) -> List[Relationship]:
+        relationships = []
+        assets = entities.get("assets", [])
+        services = entities.get("services", [])
+        vulns = entities.get("vulnerabilities", [])
+        
+        # Link Shodan external findings to internal assets
+        for asset in assets:
+            if asset.tags and "shodan" in asset.tags:
+                relationships.append(Relationship(
+                    source_id="shodan_external",
+                    target_id=asset.id,
+                    type="EXTERNAL_VISIBILITY",
+                    metadata={"source": "shodan_correlation"}
+                ))
+
+        # Correlate specific services (Nmap) with vulnerabilities (Nuclei)
+        # Often Nuclei finds a vuln but doesn't explicitly link it to a service entity
+        for v in vulns:
+            for s in services:
+                if v.asset_id == s.asset_id and s.port in (v.description or ""):
+                    relationships.append(Relationship(
+                        source_id=s.id,
+                        target_id=v.id,
+                        type="SERVICE_VULNERABILITY",
+                        metadata={"source": "cross_tool_correlation"}
+                    ))
+        
+        return relationships
+
 class InferenceEngine:
     """Orchestrates security inference rules to discover hidden relationships."""
     
@@ -140,7 +174,8 @@ class InferenceEngine:
             NetworkProximityRule(),
             CredentialReuseRule(),
             ServiceMatchingRule(),
-            ExploitMappingRule()
+            ExploitMappingRule(),
+            CrossToolCorrelationRule()
         ]
         self.scorer = RiskScorer()
 
@@ -194,7 +229,8 @@ class InferenceEngine:
 class RiskScorer:
     """Calculates security risk scores for assets based on their characteristics and findings."""
 
-    def calculate(self, entities: Dict[str, List[Any]]) -> Dict[str, float]:
+    def calculate(self, entities: Dict[str, List[Any]], graph: Optional[Any] = None) -> Dict[str, float]:
+        """Calculates risk scores for all assets, optionally using graph centrality for blast radius."""
         scores = {}
         assets = entities.get("assets", [])
         services = entities.get("services", [])
@@ -238,10 +274,46 @@ class RiskScorer:
                 
                 score += v_weight
 
-            # 3. Credential reuse factor (if we had inferred relationships available here)
-            # This would require more complex cross-entity logic
+            # 3. Blast Radius calculation (Centrality-based impact)
+            if graph and asset.id in graph:
+                # Degree centrality (number of connections) as impact proxy
+                # Out-degree is particularly relevant: what can this asset reach?
+                out_degree = graph.out_degree(asset.id)
+                score += min(out_degree * 0.2, 2.0) # Cap at +2.0
 
             # Cap the final score at 10.0
             scores[asset.id] = min(score, 10.0)
             
         return scores
+
+class TemporalAnalysisEngine:
+    """Analyzes security posture changes over time."""
+    
+    def analyze_posture_drift(self, snapshots: List[Tuple[datetime.datetime, Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """Identifies significant changes between execution snapshots."""
+        drifts = []
+        if len(snapshots) < 2:
+            return drifts
+            
+        # Sort by timestamp
+        snapshots.sort(key=lambda x: x[0])
+        
+        for i in range(1, len(snapshots)):
+            prev_time, prev_data = snapshots[i-1]
+            curr_time, curr_data = snapshots[i]
+            
+            # Simple drift detection on risk scores
+            prev_scores = prev_data.get("risk_scores", {})
+            curr_scores = curr_data.get("risk_scores", {})
+            
+            for asset_id, curr_score in curr_scores.items():
+                prev_score = prev_scores.get(asset_id)
+                if prev_score is not None and abs(curr_score - prev_score) > 1.0:
+                    drifts.append({
+                        "asset_id": asset_id,
+                        "previous_score": prev_score,
+                        "current_score": curr_score,
+                        "timestamp": curr_time.isoformat(),
+                        "drift_type": "RISK_SCORE_CHANGE"
+                    })
+        return drifts

@@ -1,0 +1,28 @@
+name: Forensic Evidence Collection
+version: "1.0"
+description: "Automated collection of volatile evidence from a compromised host."
+
+tasks:
+  - id: collect_ram
+    name: Dump Volatile Memory
+    adapter: shell
+    params:
+      command: "avml /tmp/memdump.raw"
+    description: "Capture RAM for analysis using AVML."
+
+  - id: network_connections
+    name: Capture Network State
+    adapter: shell
+    params:
+      command: "netstat -ano > /tmp/netstat.txt"
+    description: "Record active network connections and associated PIDs."
+
+  - id: upload_to_s3
+    name: Secure Evidence to Cloud
+    adapter: aws
+    depends_on: [collect_ram, network_connections]
+    params:
+      action: "upload_file"
+      file_path: "/tmp/memdump.raw"
+      bucket: "forensic-evidence-storage"
+    description: "Move captured evidence to a secure, immutable cloud bucket."

@@ -1,0 +1,34 @@
+name: Ransomware Containment Playbook
+version: "1.0"
+description: "Rapid containment of suspected ransomware activity on an endpoint."
+
+tasks:
+  - id: isolate_network
+    name: Isolate Network Interface
+    adapter: shell
+    params:
+      command: "ip link set eth0 down"
+    description: "Shut down the primary network interface to prevent lateral movement."
+
+  - id: list_processes
+    name: List Active Processes
+    adapter: shell
+    params:
+      command: "ps aux --sort=-%cpu"
+    description: "Identify high-CPU processes likely to be encryption engines."
+
+  - id: kill_suspect_process
+    name: Kill Suspect Process
+    adapter: shell
+    depends_on: [list_processes]
+    params:
+      command: "kill -9 {{ tasks.list_processes.outputs.suspect_pid }}"
+    description: "Terminate the process identified as the primary threat."
+
+  - id: snapshot_disk
+    name: Snapshot EBS Volume
+    adapter: aws
+    params:
+      action: "create_snapshot"
+      volume_id: "vol-12345678"
+    description: "Create a forensic snapshot of the disk for later analysis."
