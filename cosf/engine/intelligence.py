@@ -190,6 +190,31 @@ class InferenceEngine:
         """Calculates risk scores for all assets."""
         return self.scorer.calculate(entities)
 
+    def suggest_remediations(self, entities: Dict[str, List[Any]]) -> List[WorkflowTask]:
+        """Suggests remediation tasks based on discovered vulnerabilities."""
+        suggestions = []
+        vulns = entities.get("vulnerabilities", [])
+        assets = {a.id: a for a in entities.get("assets", [])}
+        
+        for v in vulns:
+            asset = assets.get(v.asset_id)
+            if not asset: continue
+            
+            # Simple mapping: Critical/High vulns suggest patching
+            if v.severity.lower() in ("critical", "high"):
+                suggestions.append(WorkflowTask(
+                    id=f"remediate_{v.id}",
+                    name=f"Auto-Remediate: {v.cve_id or v.description[:20]}",
+                    adapter="remediation",
+                    params={
+                        "action": "patch_vulnerability",
+                        "target": str(asset.ip_address),
+                        "cve_id": v.cve_id
+                    }
+                ))
+        
+        return suggestions
+
     def validate_attack_path(self, path: List[str], entities: Dict[str, List[Any]]) -> Optional[WorkflowSchema]:
         """Generates a COSF workflow to validate a discovered attack path."""
         if not path: return None
