@@ -63,5 +63,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [Folder](./tracks/simulation/)
 
 ---
-## [ ] Track: v1.0 Stability & Ecosystem Expansion
+## [x] Track: v1.0 Stability & Ecosystem Expansion
 - [Roadmap](../next.md)

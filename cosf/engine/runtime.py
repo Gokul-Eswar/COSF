@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cosf.models.som import Asset, Service, Vulnerability, Credential, AttackStep, Relationship, Evidence
 from cosf.utils.crypto import CryptoManager
 from cosf.utils.variables import resolve_variables
+from cosf.utils.hooks import HookManager, get_hook_manager
 
 class ConditionEvaluator:
     """Evaluates conditional 'when' expressions against the execution context."""
@@ -89,6 +90,7 @@ class ExecutionEngine:
         self.policy = policy_engine or PolicyEngine()
         self.context: Dict[str, Any] = {}
         self.semaphore = asyncio.Semaphore(max_concurrency)
+        self.hooks = get_hook_manager()
 
     @classmethod
     def subscribe_logs(cls, execution_id: str) -> asyncio.Queue:
@@ -179,6 +181,8 @@ class ExecutionEngine:
             self.log(db_exec.id, f"Starting workflow: {workflow.name} (Execution ID: {db_exec.id})")
             if dry_run: self.log(db_exec.id, "MODE: DRY RUN (Simulation only)", level="warning")
             
+            await self.hooks.notify_all(f"🚀 Workflow Started: {workflow.name} (ID: {db_exec.id})")
+
             try:
                 executed_task_ids: Set[str] = set()
                 remaining_tasks = list(workflow.tasks)
@@ -228,10 +232,12 @@ class ExecutionEngine:
                 db_exec.status = "completed"
                 # Sign the overall completion state
                 db_exec.signature = CryptoManager.sign_message(priv_key, f"{db_exec.id}:completed")
+                await self.hooks.notify_all(f"✅ Workflow Completed: {workflow.name} (ID: {db_exec.id})")
             except Exception as e:
                 db_exec.status = "failed"
                 db_exec.signature = CryptoManager.sign_message(priv_key, f"{db_exec.id}:failed:{str(e)}")
                 self.log(db_exec.id, f"Workflow stopped due to failure: {e}", level="error")
+                await self.hooks.notify_all(f"❌ Workflow Failed: {workflow.name} (ID: {db_exec.id}). Error: {str(e)}")
                 raise e
             finally:
                 db_exec.end_time = datetime.now(timezone.utc)
