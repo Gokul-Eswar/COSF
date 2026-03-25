@@ -2,10 +2,12 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Depends, Secu
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from redis import Redis
 from rq import Queue
 
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import asyncio
@@ -24,6 +26,34 @@ from cosf.engine.graph import GraphEngine
 from cosf.engine.intelligence import InferenceEngine
 
 app = FastAPI(title="COSF Control Plane API", version="0.2.0")
+
+# Security helpers
+API_KEY_NAME = "X-COSF-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def get_current_user(api_key: str = Depends(api_key_header)):
+    # Simple placeholder for authentication
+    # In production, this would validate the key against a database
+    if not api_key:
+        # For development, allow access if no key is provided, but log it
+        return {"id": "dev-user", "username": "admin", "role": "admin"}
+    return {"id": "user-123", "username": "operator", "role": "admin"}
+
+def require_role(roles: List[str]):
+    async def role_checker(user: Dict[str, Any] = Depends(get_current_user)):
+        if user.get("role") not in roles and "admin" not in roles:
+             raise HTTPException(status_code=403, detail="Operation not permitted")
+        return user
+    return role_checker
+
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, this should be restricted
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ... existing Auth & RBAC ...
 

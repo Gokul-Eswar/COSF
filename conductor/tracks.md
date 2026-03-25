@@ -65,3 +65,47 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [x] Track: v1.0 Stability & Ecosystem Expansion
 - [Roadmap](../next.md)
+
+---
+## [x] Track: Visual Workflow Builder (Frontend)
+- [Archive Folder](./archive/visual_workflow_builder/)
+
+---
+## [ ] Track: Template Marketplace
+- [Plan](./tracks/template_marketplace/plan.md)
+
+---
+## [ ] Track: Predictive Attack Pathing (ML)
+- [Plan](./tracks/predictive_attack_pathing/plan.md)
+
+---
+## [ ] Track: Natural Language Query (NLQ)
+- [Plan](./tracks/nlq/plan.md)
+
+---
+## [ ] Track: Global Asset Inventory (GAI)
+- [Plan](./tracks/gai/plan.md)
+
+---
+## [ ] Track: Enterprise SSO (SAML/OIDC)
+- [Plan](./tracks/enterprise_sso/plan.md)
+
+---
+## [ ] Track: Multi-user Collaboration
+- [Plan](./tracks/multi_user_collaboration/plan.md)
+
+---
+## [ ] Track: C++ Core Optimization
+- [Plan](./tracks/cpp_optimization/plan.md)
+
+---
+## [ ] Track: Graph Database Migration (Neo4j)
+- [Plan](./tracks/graph_migration/plan.md)
+
+---
+## [ ] Track: Compliance Automation
+- [Plan](./tracks/compliance_automation/plan.md)
+
+---
+## [ ] Track: Research Formalization
+- [Plan](./tracks/research_formalization/plan.md)
