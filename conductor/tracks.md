@@ -4,15 +4,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 ## [x] Track: Data Persistence & Execution History
-- [Folder](./tracks/data_persistence/)
+- [Archive Folder](./archive/data_persistence/)
 
 ---
 ## [x] Track: Formal Adapter SDK & Plugin System
-- [Folder](./tracks/adapter_sdk/)
+- [Archive Folder](./archive/adapter_sdk/)
 
 ---
 ## [x] Track: Reporting & Visualization Layer
-- [Folder](./tracks/reporting/)
+- [Archive Folder](./archive/reporting/)
 
 ---
 ## [x] Track: Advanced Workflow Logic (WDL 2.0)
@@ -20,47 +20,47 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 ## [x] Track: WDL 3.0 - Conditional & Dynamic Logic
-- [Folder](./tracks/wdl_3_conditional_logic/)
+- [Archive Folder](./archive/wdl_3_conditional_logic/)
 
 ---
 ## [x] Track: Attack Path Modeling & Graph Visualization
-- [Folder](./tracks/attack_path_modeling/)
+- [Archive Folder](./archive/attack_path_modeling/)
 
 ---
 ## [x] Track: AI-Assisted Workflow Generation
-- [Folder](./tracks/ai_workflow_generation/)
+- [Archive Folder](./archive/ai_workflow_generation/)
 
 ---
 ## [x] Track: Expanded Adapter Ecosystem
-- [Folder](./tracks/adapter_expansion/)
+- [Archive Folder](./archive/adapter_expansion/)
 
 ---
 ## [x] Track: Advanced SOM & Evidence Management
-- [Folder](./tracks/evidence_management/)
+- [Archive Folder](./archive/evidence_management/)
 
 ---
 ## [x] Track: Cloud Integration
-- [Folder](./tracks/cloud_integration/)
+- [Archive Folder](./archive/cloud_integration/)
 
 ---
 ## [x] Track: Advanced Security Intelligence & Autonomous Inference
-- [Folder](./tracks/security_intelligence/)
+- [Archive Folder](./archive/security_intelligence/)
 
 ---
 ## [x] Track: Enterprise Foundation & API Control Plane
-- [Folder](./tracks/enterprise_control_plane/)
+- [Archive Folder](./archive/enterprise_control_plane/)
 
 ---
 ## [x] Track: Unified Web Dashboard & Visualization
-- [Folder](./tracks/web_dashboard/)
+- [Archive Folder](./archive/web_dashboard/)
 
 ---
 ## [x] Track: Centralized Normalization Pipeline (OCSF Layer)
-- [Folder](./tracks/normalization/)
+- [Archive Folder](./archive/normalization/)
 
 ---
 ## [x] Track: Simulation & "Dry Run" Mode
-- [Folder](./tracks/simulation/)
+- [Archive Folder](./archive/simulation/)
 
 ---
 ## [x] Track: v1.0 Stability & Ecosystem Expansion
