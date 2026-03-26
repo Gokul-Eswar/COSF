@@ -11,9 +11,10 @@ import ReactFlow, {
   useEdgesState,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Settings, Play, Save, Download, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Settings, Play, Save, Download, Trash2, Plus, Loader2, ShoppingBag } from 'lucide-react';
 
 import './App.css';
+import MarketplaceView from './MarketplaceView';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -39,6 +40,7 @@ const App = () => {
   const [adapters, setAdapters] = useState<AdapterMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [workflowName, setWorkflowName] = useState('New Workflow');
+  const [currentView, setCurrentView] = useState<'builder' | 'marketplace'>('builder');
 
   useEffect(() => {
     const fetchAdapters = async () => {
@@ -155,6 +157,39 @@ const App = () => {
     alert('Export logic: Visual layout will be converted to WDL YAML via backend.');
   };
 
+  const handleInstalled = async (draftId: string) => {
+    // Fetch the draft and load it into the builder
+    try {
+      const response = await fetch(`${API_BASE}/drafts/${draftId}`);
+      const draft = await response.json();
+      
+      setWorkflowName(draft.name);
+      // If content has nodes/edges, use them, otherwise we might need to auto-layout tasks
+      if (draft.content.nodes && draft.content.edges) {
+        setNodes(draft.content.nodes);
+        setEdges(draft.content.edges);
+      } else if (draft.content.tasks) {
+        // Simple auto-layout for imported WDL
+        const newNodes = draft.content.tasks.map((t: any, i: number) => ({
+          id: `node_${i}`,
+          type: 'default',
+          position: { x: 100, y: 100 + i * 100 },
+          data: { label: t.name, adapter: t.adapter, params: t.params }
+        }));
+        setNodes(newNodes);
+        setEdges([]);
+      }
+      
+      setCurrentView('builder');
+    } catch (error) {
+      console.error('Failed to load installed draft:', error);
+    }
+  };
+
+  if (currentView === 'marketplace') {
+    return <MarketplaceView onBack={() => setCurrentView('builder')} onInstalled={handleInstalled} />;
+  }
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -167,6 +202,9 @@ const App = () => {
           />
         </div>
         <div className="actions">
+          <button onClick={() => setCurrentView('marketplace')} title="Marketplace" className="btn-secondary">
+            <ShoppingBag size={18} /> Marketplace
+          </button>
           <button onClick={saveDraft} disabled={isLoading} title="Save Draft">
             {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
             Save

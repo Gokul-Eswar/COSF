@@ -24,8 +24,11 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from cosf.engine.graph import GraphEngine
 from cosf.engine.intelligence import InferenceEngine
+from cosf.marketplace.manager import MarketplaceManager
+from cosf.marketplace.schema import TemplateType
 
 app = FastAPI(title="COSF Control Plane API", version="0.2.0")
+marketplace_manager = MarketplaceManager()
 
 # Security helpers
 API_KEY_NAME = "X-COSF-API-Key"
@@ -158,5 +161,53 @@ async def export_draft_to_wdl(draft_id: str, user: Dict[str, Any] = Depends(get_
         
         yaml_output = yaml.dump(wdl_data, sort_keys=False)
         return {"workflow_yaml": yaml_output}
+
+# --- Marketplace Endpoints ---
+
+@app.get("/api/marketplace/templates")
+async def list_marketplace_templates(
+    category: Optional[str] = None, 
+    type: Optional[TemplateType] = None,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Lists all available templates in the marketplace."""
+    return marketplace_manager.list_templates(category=category, template_type=type)
+
+@app.get("/api/marketplace/templates/{template_id}")
+async def get_marketplace_template(template_id: str, user: Dict[str, Any] = Depends(get_current_user)):
+    """Retrieves full details for a marketplace template."""
+    template = marketplace_manager.get_template(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return template
+
+@app.post("/api/marketplace/templates/{template_id}/install", status_code=201)
+async def install_marketplace_template(
+    template_id: str, 
+    user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))
+):
+    """Installs a marketplace template (e.g., creates a draft for playbooks)."""
+    template = marketplace_manager.get_template(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    if template.type == TemplateType.PLAYBOOK:
+        async with AsyncSessionLocal() as session:
+            # Import as a new draft
+            new_draft = DBWorkflowDraft(
+                name=f"{template.name} (Installed)",
+                description=template.description,
+                content=template.content # Assuming content is already in draft-compatible format or WDL
+            )
+            session.add(new_draft)
+            await session.commit()
+            await session.refresh(new_draft)
+            return {"message": "Playbook installed as draft", "draft_id": new_draft.id}
+    
+    elif template.type == TemplateType.ADAPTER:
+        # Future: Logic to register adapter (e.g., download file)
+        return {"message": "Adapter installation not yet implemented", "template_id": template_id}
+
+    raise HTTPException(status_code=400, detail="Unsupported template type for installation")
 
 # ... existing code ...

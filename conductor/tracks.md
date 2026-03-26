@@ -73,6 +73,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 ## [ ] Track: Template Marketplace
 - [Plan](./tracks/template_marketplace/plan.md)
+- [Specification](./tracks/template_marketplace/spec.md)
 
 ---
 ## [ ] Track: Predictive Attack Pathing (ML)

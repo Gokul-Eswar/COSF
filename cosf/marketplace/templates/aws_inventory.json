@@ -1,0 +1,32 @@
+{
+  "id": "aws-inventory",
+  "name": "AWS Asset Inventory",
+  "description": "Enumerates S3 buckets and EC2 instances to build an initial asset graph.",
+  "category": "cloud",
+  "tags": ["aws", "s3", "ec2", "inventory"],
+  "type": "playbook",
+  "content": {
+    "name": "AWS Inventory",
+    "tasks": [
+      {
+        "name": "List S3",
+        "adapter": "aws",
+        "params": {
+          "service": "s3",
+          "action": "list_buckets"
+        }
+      },
+      {
+        "name": "List EC2",
+        "adapter": "aws",
+        "params": {
+          "service": "ec2",
+          "action": "describe_instances"
+        }
+      }
+    ]
+  },
+  "verified": true,
+  "author": "COSF Core Team",
+  "created_at": "2026-03-27T00:00:00Z"
+}

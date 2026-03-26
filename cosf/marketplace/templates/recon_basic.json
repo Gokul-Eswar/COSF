@@ -1,0 +1,32 @@
+{
+  "id": "recon-basic",
+  "name": "Basic Reconnaissance",
+  "description": "A standard Nmap + Shodan workflow for asset discovery.",
+  "category": "recon",
+  "tags": ["nmap", "shodan", "scanning"],
+  "type": "playbook",
+  "content": {
+    "name": "Basic Recon",
+    "tasks": [
+      {
+        "name": "Nmap Scan",
+        "adapter": "nmap",
+        "params": {
+          "target": "127.0.0.1",
+          "ports": "80,443,22"
+        }
+      },
+      {
+        "name": "Shodan Lookup",
+        "adapter": "shodan",
+        "depends_on": ["Nmap Scan"],
+        "params": {
+          "ip": "127.0.0.1"
+        }
+      }
+    ]
+  },
+  "verified": true,
+  "author": "COSF Core Team",
+  "created_at": "2026-03-27T00:00:00Z"
+}
