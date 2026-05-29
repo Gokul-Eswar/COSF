@@ -7,7 +7,7 @@ With the core framework stabilized at v1.0, the next phase focuses on usability,
 ## 1. Advanced Workflow UX
 - [x] **Visual Workflow Builder (Backend):** CRUD endpoints for drafts, adapter metadata, and WDL export logic.
 - [x] **Visual Workflow Builder (Frontend):** A low-code, drag-and-drop web interface for composing WDL files.
-- [ ] **Template Marketplace:** An integrated "Store" in the dashboard to discover and install community-verified playbooks and adapters.
+- [x] **Template Marketplace:** An integrated "Store" in the dashboard to discover and install community-verified playbooks and adapters.
 
 ## 2. Intelligence & Autonomous Action
 - [x] **Auto-Remediation Agents:** RemediationAdapter and InferenceEngine logic to suggest and execute fixes.

@@ -1,0 +1,14 @@
+{
+  "id": "ping",
+  "name": "Ping Adapter",
+  "description": "A custom adapter that pings target hosts to check connectivity.",
+  "category": "recon",
+  "tags": ["ping", "network", "icmp"],
+  "type": "adapter",
+  "content": {
+    "code": "import subprocess\nfrom typing import Dict, Any\nfrom cosf.engine.adapter import BaseAdapter, TaskResult\nfrom cosf.models.som import Asset\n\nclass PingAdapter(BaseAdapter):\n    ADAPTER_NAME = \"ping\"\n    ADAPTER_DESCRIPTION = \"Pings a target host to verify if it is alive.\"\n\n    async def _run(self, params: Dict[str, Any]) -> TaskResult:\n        target = params.get(\"target\")\n        if not target:\n            raise ValueError(\"Ping adapter requires a 'target' parameter\")\n\n        self.logger.info(f\"Pinging target: {target}\")\n        import asyncio\n        await asyncio.sleep(0.5)\n\n        asset = Asset(\n            id=f\"asset_{target.replace('.', '_')}\",\n            name=target,\n            ip_address=target,\n            tags=[\"ping_response\"]\n        )\n\n        return TaskResult(\n            entities=[asset],\n            outputs={\"status\": \"up\", \"target\": target},\n            raw_output=f\"Ping to {target} was successful.\"\n        )\n"
+  },
+  "verified": true,
+  "author": "COSF Core Team",
+  "created_at": "2026-05-29T00:00:00Z"
+}

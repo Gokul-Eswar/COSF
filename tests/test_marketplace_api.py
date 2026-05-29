@@ -3,9 +3,6 @@ from unittest.mock import MagicMock
 import sys
 import asyncio
 
-# Mock missing dependencies before importing app
-for module in ["rq", "redis", "hvac", "docker", "boto3", "pymetasploit3"]:
-    sys.modules[module] = MagicMock()
 
 from fastapi.testclient import TestClient
 from cosf.api.main import app
@@ -48,3 +45,26 @@ def test_install_template():
     assert response.status_code == 200
     draft_data = response.json()
     assert draft_data["name"] == "Basic Reconnaissance (Installed)"
+
+def test_install_adapter_template():
+    import os
+    from pathlib import Path
+    
+    adapter_file = Path("cosf/engine/adapters/ping.py")
+    if adapter_file.exists():
+        os.remove(adapter_file)
+        
+    try:
+        response = client.post("/api/marketplace/templates/ping/install")
+        assert response.status_code == 201
+        data = response.json()
+        assert data["adapter_id"] == "ping"
+        assert "installed successfully" in data["message"]
+        
+        assert adapter_file.exists()
+        code = adapter_file.read_text(encoding="utf-8")
+        assert "class PingAdapter" in code
+    finally:
+        if adapter_file.exists():
+            os.remove(adapter_file)
+

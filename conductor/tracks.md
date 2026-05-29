@@ -71,9 +71,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [Archive Folder](./archive/visual_workflow_builder/)
 
 ---
-## [ ] Track: Template Marketplace
-- [Plan](./tracks/template_marketplace/plan.md)
-- [Specification](./tracks/template_marketplace/spec.md)
+## [x] Track: Template Marketplace
+- [Archive Folder](./archive/template_marketplace/)
 
 ---
 ## [ ] Track: Predictive Attack Pathing (ML)
