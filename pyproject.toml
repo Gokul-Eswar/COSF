@@ -23,6 +23,7 @@ dependencies = [
     "rq>=1.16.1",
     "hvac>=2.1.0",
     "reportlab>=4.1.0",
+    "neo4j>=5.18.0",
 ]
 
 [project.optional-dependencies]

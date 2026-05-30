@@ -23,6 +23,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from cosf.engine.graph import GraphEngine
 from cosf.engine.intelligence import InferenceEngine
+from cosf.engine.predictive import PredictiveAttackEngine
 from cosf.marketplace.manager import MarketplaceManager
 from cosf.marketplace.schema import TemplateType
 
@@ -93,6 +94,10 @@ class WorkflowGenerationResponse(BaseModel):
 class PathValidationRequest(BaseModel):
     path: List[str]
 
+class PredictNextRequest(BaseModel):
+    current_node: str
+    top_n: Optional[int] = 5
+
 class ExecutionStatus(BaseModel):
     id: str
     workflow_name: str
@@ -122,6 +127,11 @@ async def run_workflow_task(execution_id: str, workflow_yaml: str, dry_run: bool
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    from cosf.engine.graph import close_neo4j_driver
+    await close_neo4j_driver()
 
 # --- Serving Dashboard ---
 @app.get("/", response_class=HTMLResponse)
@@ -382,14 +392,14 @@ async def get_graph(infer: bool = True, user: Dict[str, Any] = Depends(get_curre
     """Returns the full security relationship graph."""
     engine = GraphEngine()
     await engine.build_from_db(infer=infer)
-    return engine.get_graph_data()
+    return await engine.get_graph_data()
 
 @app.post("/api/analysis/critical-paths")
 async def analyze_paths(user: Dict[str, Any] = Depends(require_role(["admin", "operator"]))):
     """Triggers an autonomous attack path analysis."""
     engine = GraphEngine()
     await engine.build_from_db(infer=True)
-    return engine.analyze_critical_paths()
+    return await engine.analyze_critical_paths()
 
 @app.post("/api/analysis/preview-validation")
 async def preview_validation(
@@ -444,6 +454,31 @@ async def validate_path(
     background_tasks.add_task(run_workflow_task, "pending", workflow_yaml, dry_run=False)
     
     return {"message": "Autonomous validation triggered", "workflow_name": workflow.name}
+
+# --- Predictive Attack Pathing Endpoints ---
+@app.get("/api/analysis/predictive-paths")
+async def get_predictive_paths(
+    start_node: str = "internet",
+    user: Dict[str, Any] = Depends(require_role(["admin", "operator", "readonly"]))
+):
+    """Generates high-likelihood predicted attack paths starting from a source node."""
+    engine = GraphEngine()
+    await engine.build_from_db(infer=True)
+    
+    predictive_engine = PredictiveAttackEngine(engine)
+    return predictive_engine.analyze_highest_risk_paths()
+
+@app.post("/api/analysis/predict-next")
+async def predict_next(
+    request: PredictNextRequest,
+    user: Dict[str, Any] = Depends(require_role(["admin", "operator", "readonly"]))
+):
+    """Predicts the next most likely targets an attacker would pivot to from the current node."""
+    engine = GraphEngine()
+    await engine.build_from_db(infer=True)
+    
+    predictive_engine = PredictiveAttackEngine(engine)
+    return predictive_engine.predict_next_moves(request.current_node, top_n=request.top_n)
 
 # --- Assets & Vulnerabilities Endpoints ---
 @app.get("/assets")

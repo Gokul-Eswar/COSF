@@ -308,13 +308,76 @@ def visualize_graph():
     async def visualize():
         engine = GraphEngine()
         await engine.build_from_db()
-        data = engine.get_graph_data()
+        data = await engine.get_graph_data()
         typer.echo(json.dumps(data, indent=2))
 
     try:
         asyncio.run(visualize())
     except Exception as e:
         typer.echo(f"Error: Failed to export graph: {e}", err=True)
+        raise typer.Exit(code=1)
+
+@graph_app.command(name="predict")
+def predict_paths(
+    start_node: str = typer.Option("internet", "--start", "-s", help="The start node for predictive paths"),
+    top_n: int = typer.Option(3, "--top-n", "-n", help="Number of paths to output per target")
+):
+    """Predict high-likelihood attack paths using graph structural features and risk parameters."""
+    async def run_prediction():
+        from cosf.engine.predictive import PredictiveAttackEngine
+        engine = GraphEngine()
+        await engine.build_from_db(infer=True)
+        
+        predictive_engine = PredictiveAttackEngine(engine)
+        paths = predictive_engine.analyze_highest_risk_paths()
+        
+        if not paths:
+            typer.echo("No high-likelihood attack paths predicted.")
+            return
+            
+        typer.echo("Predicted Attack Paths:")
+        typer.echo("=======================")
+        for idx, path_info in enumerate(paths, 1):
+            typer.echo(f"\nPath #{idx}: Probability: {path_info['probability']*100:.2f}%")
+            typer.echo(f"Target Asset: {path_info['target_label']} (Risk Score: {path_info['target_risk_score']:.1f}/10.0)")
+            typer.echo("Steps:")
+            for step_idx, step in enumerate(path_info["steps"], 1):
+                typer.echo(f"  {step_idx}. {step['description']} (Transition Prob: {step['probability']*100:.1f}%)")
+                
+    try:
+        asyncio.run(run_prediction())
+    except Exception as e:
+        typer.echo(f"Error: Predictive pathing failed: {e}", err=True)
+        raise typer.Exit(code=1)
+
+@graph_app.command(name="predict-next")
+def predict_next_moves(
+    current_node: str = typer.Argument(..., help="The node ID to predict next hops from"),
+    top_n: int = typer.Option(5, "--top-n", "-n", help="Max number of next-hop predictions to show")
+):
+    """Predict the next likely attacker moves from a specific node."""
+    async def run_next():
+        from cosf.engine.predictive import PredictiveAttackEngine
+        engine = GraphEngine()
+        await engine.build_from_db(infer=True)
+        
+        predictive_engine = PredictiveAttackEngine(engine)
+        moves = predictive_engine.predict_next_moves(current_node, top_n=top_n)
+        
+        if not moves:
+            typer.echo(f"No next moves predicted from '{current_node}'. Check if node exists and has neighbors.")
+            return
+            
+        typer.echo(f"Top Attacker Hops from '{current_node}':")
+        typer.echo("-" * 50)
+        for move in moves:
+            typer.echo(f"- Target: {move['target_label']} ({move['target_type']})")
+            typer.echo(f"  Transition: {move['relationship_type']} (Likelihood: {move['probability']*100:.1f}%)")
+            
+    try:
+        asyncio.run(run_next())
+    except Exception as e:
+        typer.echo(f"Error: Next-hop prediction failed: {e}", err=True)
         raise typer.Exit(code=1)
 
 @app.command(name="generate")

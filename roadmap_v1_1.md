@@ -11,7 +11,7 @@ With the core framework stabilized at v1.0, the next phase focuses on usability,
 
 ## 2. Intelligence & Autonomous Action
 - [x] **Auto-Remediation Agents:** RemediationAdapter and InferenceEngine logic to suggest and execute fixes.
-- [ ] **Predictive Attack Pathing:** Use ML to predict the next likely move of an attacker based on historical drift and graph centrality.
+- [x] **Predictive Attack Pathing:** Use ML to predict the next likely move of an attacker based on historical drift and graph centrality.
 - [ ] **Natural Language Query (NLQ):** An AI-powered search bar to ask questions like "Which of my assets are vulnerable to Log4Shell and accessible from the internet?"
 
 ## 3. Enterprise Integration
@@ -21,4 +21,4 @@ With the core framework stabilized at v1.0, the next phase focuses on usability,
 
 ## 4. Technical Debt & Performance
 - [ ] **C++ Core Optimization:** Porting high-volume normalization logic to a compiled language for massive scale.
-- [ ] **Graph Database Migration:** Moving from NetworkX/PostgreSQL to a dedicated graph store (Neo4j) for complex path queries.
+- [x] **Graph Database Migration:** Moving from NetworkX/PostgreSQL to a dedicated graph store (Neo4j) for complex path queries.

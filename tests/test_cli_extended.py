@@ -55,7 +55,7 @@ def test_cli_graph_analyze(mock_build):
 
 @patch("cosf.engine.graph.GraphEngine.build_from_db", new_callable=AsyncMock)
 def test_cli_graph_visualize(mock_build):
-    with patch("cosf.engine.graph.GraphEngine.get_graph_data") as mock_get_data:
+    with patch("cosf.engine.graph.GraphEngine.get_graph_data", new_callable=AsyncMock) as mock_get_data:
         mock_get_data.return_value = {"nodes": [], "links": []}
         result = runner.invoke(app, ["graph", "visualize"])
         assert result.exit_code == 0
